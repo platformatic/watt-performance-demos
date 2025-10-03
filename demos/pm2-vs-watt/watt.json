@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schemas.platformatic.dev/wattpm/2.55.0.json",
+  "server": {
+    "hostname": "{HOSTNAME}",
+    "port": "{PORT}"
+  },
+  "logger": {
+    "level": "info"
+  },
+  "services": [{
+    "id": "server",
+    "path": ".",
+    "config": "./watt-server.json"
+  }],
+  "health": {
+    "enabled": false
+  },
+  "metrics": false,
+  "managementApi": false,
+  "workers": "1"
+}
