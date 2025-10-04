@@ -1,0 +1,172 @@
+#!/bin/bash
+
+# Common functions for benchmark orchestration across cloud providers
+# This file provides shared functionality for all benchmark.sh scripts
+
+# Colors for output formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log() {
+    echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1" >&2
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1" >&2
+}
+
+warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1" >&2
+}
+
+# Get docker command for demo type
+get_demo_command() {
+    local demo_image=${1}
+    # TODO not sure about setting this default
+    local port=${2:-3000}
+    echo "docker run -d -p $port:$port -e HOSTNAME=0.0.0.0 $demo_image"
+}
+
+check_tool() {
+    local tool=$1
+    local install_hint=${2:-"Please install $tool"}
+    
+    if ! command -v "$tool" &> /dev/null; then
+        error "$tool is not installed or not in PATH. $install_hint"
+        return 1
+    fi
+    return 0
+}
+
+validate_aws_tools() {
+    log "Validating AWS tools..."
+
+    if ! check_tool "aws" "Please install AWS CLI: https://aws.amazon.com/cli/"; then
+        return 1
+    fi
+
+    if ! check_tool "session-manager-plugin" "Please install SSM Session Manager plugin: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html"; then
+        return 1
+    fi
+
+    if ! aws sts get-caller-identity --profile witu &> /dev/null; then
+        error "AWS credentials not configured. Run 'aws configure' to set up credentials."
+        return 1
+    fi
+
+    success "AWS tools validated"
+    return 0
+}
+
+validate_docker_tools() {
+    log "Validating Docker tools..."
+    
+    if ! check_tool "docker" "Please install Docker: https://docs.docker.com/get-docker/"; then
+        return 1
+    fi
+    
+    if ! docker info &> /dev/null; then
+        error "Docker daemon is not running. Please start Docker."
+        return 1
+    fi
+    
+    success "Docker tools validated"
+    return 0
+}
+
+validate_common_tools() {
+    log "Validating common tools..."
+    
+    local tools=("curl" "jq")
+    for tool in "${tools[@]}"; do
+        if ! check_tool "$tool"; then
+            return 1
+        fi
+    done
+    
+    success "Common tools validated"
+    return 0
+}
+
+# Generic cleanup function template
+# Each cloud provider should implement cleanup_instances()
+generic_cleanup() {
+    log "Starting cleanup process..."
+    
+    if declare -f cleanup_instances > /dev/null; then
+        cleanup_instances
+    else
+        warning "No cleanup_instances function defined - skipping instance cleanup"
+    fi
+    
+    success "Cleanup completed"
+}
+
+wait_for_http() {
+    local ip=$1
+    local port=$2
+    local max_attempts=${3:-60}
+    local retry_delay=${4:-5}
+    
+    log "Waiting for HTTP service at $ip:$port..."
+    
+    for ((i=1; i<=max_attempts; i++)); do
+        if curl -f --max-time 5 "http://$ip:$port" > /dev/null 2>&1; then
+            success "Service is ready at $ip:$port"
+            return 0
+        fi
+        
+        if ((i % 10 == 0)); then
+            log "Still waiting... attempt $i/$max_attempts"
+        fi
+        sleep "$retry_delay"
+    done
+    
+    error "Service not ready after $((max_attempts * retry_delay)) seconds"
+    return 1
+}
+
+validate_required_vars() {
+    local vars=("$@")
+    local missing=()
+    
+    for var in "${vars[@]}"; do
+        if [[ -z "${!var}" ]]; then
+            missing+=("$var")
+        fi
+    done
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        error "Missing required environment variables: ${missing[*]}"
+        return 1
+    fi
+    
+    return 0
+}
+
+show_benchmark_config() {
+    local demo_image=$1
+    local location=${2:-"unknown"}
+    
+    log "=== Benchmark Configuration ==="
+    log "Location: $location"
+    log "Demo image: $demo_image"
+    log "=============================="
+}
+
+# Get current script directory (useful for relative paths)
+get_script_dir() {
+    echo "$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
+}
+
+# Get project root directory (assumes common.sh is in lib/)
+get_project_root() {
+    echo "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+}

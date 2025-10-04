@@ -1,0 +1,12 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies (including autocannon)
+RUN npm install -g autocannon && npm cache clean --force
+
+# Default URL if not provided
+ENV TARGET_URL=http://host.docker.internal:3000
+
+# Default command runs autocannon benchmark
+CMD ["sh", "-c", "autocannon -c 100 -d 40 -W '[-c 100 -d 10]' $TARGET_URL"]
