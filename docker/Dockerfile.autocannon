@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+ARG COMMIT_HASH
+ARG BUILD_TIME
+
 WORKDIR /app
 
 COPY ./docker/entrypoint.sh /entrypoints/main.sh
@@ -14,3 +17,11 @@ ENV TARGET_URL=http://host.docker.internal
 ENV DEMO_NAME=pm2-vs-watt
 
 CMD "/entrypoints/main.sh"
+
+LABEL org.opencontainers.image.authors="Platformatic"
+LABEL org.opencontainers.image.created="$BUILD_TIME"
+LABEL org.opencontainers.image.revision="$COMMIT_HASH"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.source="https://github.com/platformatic/performance-demos"
+LABEL org.opencontainers.image.title="Autocannon"
+LABEL org.opencontainers.image.description="Runs autocannon to benchmark one of the available demos"
