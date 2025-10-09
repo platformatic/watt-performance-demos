@@ -8,12 +8,17 @@ if [ -z "$TARGET_URL" ]; then
   exit 1
 fi
 
+echo "== PM2 =="
 autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3000"
-echo ""
+
+echo "== Watt =="
 autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3001"
-echo ""
+
+echo "== Common JS =="
 autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3002"
-echo ""
+
+echo "== ESM =="
 autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3003"
-echo ""
+
+echo "== ESM Cluster =="
 autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3004"
