@@ -11,9 +11,10 @@ RUN npm install --omit=dev && npm cache clean --force
 
 RUN chmod +x entrypoint.sh
 
-EXPOSE 3000-3004
+EXPOSE 3000
 
 ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
 CMD "./entrypoint.sh"
 
