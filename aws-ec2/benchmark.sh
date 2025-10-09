@@ -8,10 +8,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$PROJECT_ROOT/lib/common.sh"
 
 DEMO_NAME="${1:-$DEMO_NAME}"
-AMI_ID="${AMI_ID:-ami-0010b929226fe8eba}" # Amazon Linux 2023
-INSTANCE_TYPE="${INSTANCE_TYPE:-t3.micro}"
+AMI_ID="${AMI_ID:-ami-07b2b18045edffe90}" # Amazon Linux 2023 arm64
+INSTANCE_TYPE="${INSTANCE_TYPE:-m8g.2xlarge}"
 AWS_PROFILE="${AWS_PROFILE}"
-DEMO_PORTS="${DEMO_PORTS:-3000-3004}" # Ports to open for demo services
+DEMO_PORTS="${DEMO_PORTS:-3000-3002}" # Ports to open for demo services
 DEMO_IMAGE="${DEMO_IMAGE:-platformatic/pm2-vs-watt:latest}"
 CANNON_IMAGE="${AUTOCANNON_IMAGE:-platformatic/autocannon:latest}"
 
