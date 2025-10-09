@@ -20,23 +20,19 @@ AUTOCANNON_INSTANCE_ID=""
 SECURITY_GROUP_ID=""
 VPC_ID=""
 
-# TODO remove regions, let aws choose
-
 cleanup_instances() {
 	if [[ -n "$DEMO_INSTANCE_ID" ]]; then
 		log "Terminating demo instance: $DEMO_INSTANCE_ID"
 		aws ec2 terminate-instances \
 			--instance-ids "$DEMO_INSTANCE_ID" \
-			--profile $AWS_PROFILE \
-			--region us-west-2 >/dev/null 2>&1 || true
+			--profile $AWS_PROFILE >/dev/null 2>&1 || true
 	fi
 
 	if [[ -n "$AUTOCANNON_INSTANCE_ID" ]]; then
 		log "Terminating autocannon instance: $AUTOCANNON_INSTANCE_ID"
 		aws ec2 terminate-instances \
 			--instance-ids "$AUTOCANNON_INSTANCE_ID" \
-			--profile $AWS_PROFILE \
-			--region us-west-2 >/dev/null 2>&1 || true
+			--profile $AWS_PROFILE >/dev/null 2>&1 || true
 	fi
 
 	if [[ -n "$SECURITY_GROUP_ID" ]]; then
@@ -45,8 +41,7 @@ cleanup_instances() {
 		sleep 5
 		aws ec2 delete-security-group \
 			--group-id "$SECURITY_GROUP_ID" \
-			--profile $AWS_PROFILE \
-			--region us-west-2 >/dev/null 2>&1 || true
+			--profile $AWS_PROFILE >/dev/null 2>&1 || true
 	fi
 }
 
@@ -59,8 +54,7 @@ create_security_group() {
 		--filters "Name=is-default,Values=true" \
 		--query 'Vpcs[0].VpcId' \
 		--output text \
-		--profile $AWS_PROFILE \
-		--region us-west-2)
+		--profile $AWS_PROFILE)
 
 	if [[ -z "$VPC_ID" || "$VPC_ID" == "None" ]]; then
 		error "No default VPC found. Please create a VPC first."
@@ -78,8 +72,7 @@ create_security_group() {
 		--vpc-id "$VPC_ID" \
 		--query 'GroupId' \
 		--output text \
-		--profile $AWS_PROFILE \
-		--region us-west-2)
+		--profile $AWS_PROFILE)
 
 	log "Created security group: $SECURITY_GROUP_ID"
 
@@ -96,8 +89,7 @@ create_security_group() {
 			--protocol tcp \
 			--port "$from_port-$to_port" \
 			--cidr 0.0.0.0/0 \
-			--profile $AWS_PROFILE \
-			--region us-west-2 >/dev/null
+			--profile $AWS_PROFILE >/dev/null
 
 	else
 		# Comma-separated ports (e.g., "3000,3001,3002")
@@ -111,8 +103,7 @@ create_security_group() {
 				--protocol tcp \
 				--port "$port" \
 				--cidr 0.0.0.0/0 \
-				--profile $AWS_PROFILE \
-				--region us-west-2 >/dev/null
+				--profile $AWS_PROFILE >/dev/null
 		done
 	fi
 
@@ -136,8 +127,7 @@ launch_instance() {
 		--tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=benchmark-$name}]" \
 		--query 'Instances[0].InstanceId' \
 		--output text \
-		--profile $AWS_PROFILE \
-		--region us-west-2)
+		--profile $AWS_PROFILE)
 
 	log "Launching $name instance..."
 	echo "$instance_id"
@@ -190,8 +180,7 @@ monitor_autocannon() {
 			--query 'Output' \
 			--output text \
 			--latest \
-			--profile $AWS_PROFILE \
-			--region us-west-2)
+			--profile $AWS_PROFILE)
 
 		# Show only new output
 		if [[ -n "$current_output" && "$current_output" != "$previous_output" ]]; then
