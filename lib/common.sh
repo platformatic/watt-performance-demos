@@ -29,9 +29,8 @@ warning() {
 # Get docker command for demo type
 get_demo_command() {
 	local demo_image=${1}
-	# TODO not sure about setting this default
-	local port=${2:-3000}
-	echo "docker run -d -p $port:$port -e HOSTNAME=0.0.0.0 $demo_image"
+	local ports=${2}
+	echo "docker run -d -p $ports:$ports -e HOSTNAME=0.0.0.0 $demo_image"
 }
 
 check_tool() {

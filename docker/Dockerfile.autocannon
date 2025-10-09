@@ -2,11 +2,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies (including autocannon)
+COPY ./docker/entrypoint.sh /entrypoints/main.sh
+RUN chmod +x /entrypoints/main.sh
+
+COPY ./demos/pm2-vs-watt/autocannon.sh /entrypoints/pm2-vs-watt.sh
+RUN chmod +x /entrypoints/pm2-vs-watt.sh
+
 RUN npm install -g autocannon && npm cache clean --force
 
-# Default URL if not provided
-ENV TARGET_URL=http://host.docker.internal:3000
+ENV TARGET_URL=http://host.docker.internal
+ENV DEMO_NAME=pm2-vs-watt
 
-# Default command runs autocannon benchmark
-CMD ["sh", "-c", "autocannon -c 100 -d 40 -W '[-c 100 -d 10]' $TARGET_URL"]
+CMD "/entrypoints/main.sh"
