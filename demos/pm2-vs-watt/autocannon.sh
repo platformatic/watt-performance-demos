@@ -13,6 +13,3 @@ autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_UR
 
 echo "== Watt =="
 autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3001"
-
-echo "== ESM Cluster =="
-autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3002"
