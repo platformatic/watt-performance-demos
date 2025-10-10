@@ -17,5 +17,5 @@
   },
   "metrics": false,
   "managementApi": false,
-  "workers": "1"
+  "workers": "{WORKERS}"
 }

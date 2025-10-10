@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   pm2:
     image: platformatic/pm2-vs-watt:latest
@@ -7,6 +5,12 @@ services:
       - "3000:3000"
     environment:
       - SCRIPT_NAME=pm2-start
+      - WORKERS=${WORKERS}
+    deploy:
+      resources:
+        reservations:
+          cpus: ${WORKERS}
+          memory: ${MEM}gb
 
   watt:
     image: platformatic/pm2-vs-watt:latest
@@ -14,10 +18,9 @@ services:
       - "3001:3000"
     environment:
       - SCRIPT_NAME=watt-start
-
-  -3002:
-    image: platformatic/pm2-vs-watt:latest
-    ports:
-      - "3002:3000"
-    environment:
-      - SCRIPT_NAME=cluster-start
+      - WORKERS=${WORKERS}
+    deploy:
+      resources:
+        reservations:
+          cpus: ${WORKERS}
+          memory: ${MEM}gb

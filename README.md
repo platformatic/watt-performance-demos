@@ -12,7 +12,7 @@ This repository implements a standardized benchmarking architecture designed for
 
 How it works:
 
-![Showing a user executing a benchmark.sh and it creating cloud-specific instances, running autocannon against demos, and then cleaning up](./watt-performance-demo.png "How this repository works")
+![Showing a user executing a benchmark.sh and it creating cloud-specific instances, running autocannon against demos, and then cleaning up](./watt-performance-demos.png "How this repository works")
 
 ## Cloud Providers
 

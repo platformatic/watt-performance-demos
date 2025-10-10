@@ -11,11 +11,11 @@ DEMO_NAME="${1:-$DEMO_NAME}"
 AMI_ID="${AMI_ID:-ami-07b2b18045edffe90}" # Amazon Linux 2023 arm64
 INSTANCE_TYPE="${INSTANCE_TYPE:-m8g.2xlarge}"
 AWS_PROFILE="${AWS_PROFILE}"
-DEMO_PORTS="${DEMO_PORTS:-3000-3002}" # Ports to open for demo services
-DEMO_IMAGE="${DEMO_IMAGE:-platformatic/pm2-vs-watt:latest}"
+DEMO_IMAGE="${DEMO_IMAGE}"
 CANNON_IMAGE="${AUTOCANNON_IMAGE:-platformatic/autocannon:latest}"
 
 DEMO_INSTANCE_ID=""
+DEMO_SOURCE_DIR="$PROJECT_ROOT/demos/$DEMO_NAME"
 AUTOCANNON_INSTANCE_ID=""
 SECURITY_GROUP_ID=""
 VPC_ID=""
@@ -221,9 +221,14 @@ main() {
 	create_security_group
 
 	log "Creating demo instance..."
+	local compose_location
+	compose_location="/docker-compose.yml"
 	local demo_cmd
-	demo_cmd=$(get_demo_command "$DEMO_IMAGE" "$DEMO_PORTS")
+	demo_cmd=$(get_demo_command 2 $compose_location)
 	log "Demo command: $demo_cmd"
+
+	local demo_docker_compose
+	demo_docker_compose=$(cat "$DEMO_SOURCE_DIR")
 
 	IFS='' read -r -d '' demo_user_script <<EOF || true
 #!/bin/bash
@@ -235,14 +240,15 @@ systemctl enable docker
 # Pull demo image
 docker pull $DEMO_IMAGE
 
-# Wait for docker to be ready
-sleep 5
+# Can't upload files ahead of time without building an AMI so instead we write
+# the contents of the source docker-compose file
+echo "$demo_docker_compose" > $compose_location
 
 # Run demo service - $DEMO_IMAGE type
 $demo_cmd
 
 # Wait for service to start
-sleep 10
+sleep 5
 echo 'Demo service started with type: $DEMO_IMAGE'
 EOF
 

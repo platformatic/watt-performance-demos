@@ -28,9 +28,14 @@ warning() {
 
 # Get docker command for demo type
 get_demo_command() {
-	local demo_image=${1}
-	local ports=${2}
-	echo "docker run -d -p $ports:$ports -e HOSTNAME=0.0.0.0 $demo_image"
+	local worker_count=${1}
+	local compose_path=${2}
+	#local demo_image=${1}
+	#local host_port=${2}
+	#local script_name=${3}
+
+	# echo "docker run -d -p ${host_port}:3000 --cpus ${worker_count} -e SCRIPT_NAME=${script_name} -e WORKERS=${worker_count} $demo_image"
+	echo "WORKERS=${worker_count} MEM=$($worker_count*1.5) docker compose --file \"${compose_path}\" up"
 }
 
 check_tool() {
