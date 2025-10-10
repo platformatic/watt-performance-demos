@@ -5,7 +5,7 @@ ARG BUILD_TIME
 
 WORKDIR /app
 
-COPY ./dockerfile-entrypoint.sh /entrypoints/main.sh
+COPY ./lib/dockerfile-entrypoint.sh /entrypoints/main.sh
 RUN chmod +x /entrypoints/main.sh
 
 COPY ./demos/pm2-vs-watt/autocannon.sh /entrypoints/pm2-vs-watt.sh
