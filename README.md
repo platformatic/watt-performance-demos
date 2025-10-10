@@ -10,6 +10,10 @@ This repository implements a standardized benchmarking architecture designed for
 - **Performance Demos** (`performance-demos/`) - Collection of demos
 - **Cloud Provider Locations** (`aws-ec2/`, `gcp-gce/`, etc.) - Provider-specific orchestration
 
+How it works:
+
+![Showing a user executing a benchmark.sh and it creating cloud-specific instances, running autocannon against demos, and then cleaning up](./watt-performance-demo.png "How this repository works")
+
 ## Cloud Providers
 
 Demos can be run on a number of supported cloud providers instructions. Here are
