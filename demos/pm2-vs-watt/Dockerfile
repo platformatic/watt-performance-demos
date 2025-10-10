@@ -16,7 +16,7 @@ EXPOSE 3000
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-CMD "./entrypoint.sh"
+ENTRYPOINT ["./entrypoint.sh"]
 
 LABEL org.opencontainers.image.authors="Platformatic"
 LABEL org.opencontainers.image.created="$BUILD_TIME"

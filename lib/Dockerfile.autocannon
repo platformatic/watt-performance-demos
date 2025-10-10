@@ -16,7 +16,7 @@ RUN npm install -g autocannon && npm cache clean --force
 ENV TARGET_URL=http://host.docker.internal
 ENV DEMO_NAME=pm2-vs-watt
 
-CMD "/entrypoints/main.sh"
+ENTRYPOINT ["/entrypoints/main.sh"]
 
 LABEL org.opencontainers.image.authors="Platformatic"
 LABEL org.opencontainers.image.created="$BUILD_TIME"
