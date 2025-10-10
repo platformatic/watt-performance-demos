@@ -1,16 +1,18 @@
+name: pm2vswatt
+
 services:
   pm2:
     image: platformatic/pm2-vs-watt:latest
     ports:
       - "3000:3000"
     environment:
-      - SCRIPT_NAME=pm2-start
-      - WORKERS=${WORKERS}
+      - SCRIPT_NAME=pm2r-start
+      - WORKERS=2
     deploy:
       resources:
         reservations:
-          cpus: ${WORKERS}
-          memory: ${MEM}gb
+          cpus: 2
+          memory: 3gb
 
   watt:
     image: platformatic/pm2-vs-watt:latest
@@ -18,9 +20,9 @@ services:
       - "3001:3000"
     environment:
       - SCRIPT_NAME=watt-start
-      - WORKERS=${WORKERS}
+      - WORKERS=2
     deploy:
       resources:
         reservations:
-          cpus: ${WORKERS}
-          memory: ${MEM}gb
+          cpus: 2
+          memory: 3gb

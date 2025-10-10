@@ -11,9 +11,9 @@ DEMO_NAME="${1:-$DEMO_NAME}"
 AMI_ID="${AMI_ID:-ami-07b2b18045edffe90}" # Amazon Linux 2023 arm64
 INSTANCE_TYPE="${INSTANCE_TYPE:-m8g.2xlarge}"
 AWS_PROFILE="${AWS_PROFILE}"
-DEMO_IMAGE="${DEMO_IMAGE}"
 CANNON_IMAGE="${AUTOCANNON_IMAGE:-platformatic/autocannon:latest}"
 
+DEMO_PORTS="3000-3001"
 DEMO_INSTANCE_ID=""
 DEMO_SOURCE_DIR="$PROJECT_ROOT/demos/$DEMO_NAME"
 AUTOCANNON_INSTANCE_ID=""
@@ -208,7 +208,7 @@ monitor_autocannon() {
 }
 
 main() {
-	show_benchmark_config "$DEMO_IMAGE" "AWS EC2"
+	show_benchmark_config "$DEMO_NAME" "AWS EC2"
 
 	if ! validate_aws_tools || ! validate_common_tools; then
 		error "Tool validation failed"
@@ -228,28 +228,37 @@ main() {
 	log "Demo command: $demo_cmd"
 
 	local demo_docker_compose
-	demo_docker_compose=$(cat "$DEMO_SOURCE_DIR")
+	demo_docker_compose=$(cat "$DEMO_SOURCE_DIR/docker-compose.yml")
 
 	IFS='' read -r -d '' demo_user_script <<EOF || true
 #!/bin/bash
+set -e
 yum update -y
 yum install -y docker
 systemctl start docker
 systemctl enable docker
 
-# Pull demo image
-docker pull $DEMO_IMAGE
+# Install docker-compose plugin
+DOCKER_CONFIG=/usr/libexec/docker
+mkdir -p \$DOCKER_CONFIG/cli-plugins
+curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-\$(uname -m) -o \$DOCKER_CONFIG/cli-plugins/docker-compose
+chown root:root \$DOCKER_CONFIG/cli-plugins/docker-compose
+chmod +x \$DOCKER_CONFIG/cli-plugins/docker-compose
+
+# Verify installation
+docker compose version
 
 # Can't upload files ahead of time without building an AMI so instead we write
 # the contents of the source docker-compose file
 echo "$demo_docker_compose" > $compose_location
+cat $compose_location
 
-# Run demo service - $DEMO_IMAGE type
+# Run demo service - $DEMO_NAME type
 $demo_cmd
 
 # Wait for service to start
 sleep 5
-echo 'Demo service started with type: $DEMO_IMAGE'
+echo 'Demo service started with type: $DEMO_NAME'
 EOF
 
 	demo_user_data=$(echo -n "$demo_user_script" | base64 -w0)
