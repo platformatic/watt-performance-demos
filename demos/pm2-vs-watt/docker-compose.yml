@@ -12,7 +12,7 @@ services:
       resources:
         reservations:
           cpus: 2
-          memory: 3gb
+          memory: 4gb
 
   watt:
     image: platformatic/pm2-vs-watt:latest
@@ -25,4 +25,17 @@ services:
       resources:
         reservations:
           cpus: 2
-          memory: 3gb
+          memory: 4gb
+
+  cluster:
+    image: platformatic/pm2-vs-watt:latest
+    ports:
+      - "3002:3000"
+    environment:
+      - SCRIPT_NAME=cluster-start
+      - WORKERS=2
+    deploy:
+      resources:
+        reservations:
+          cpus: 2
+          memory: 4gb

@@ -2,7 +2,7 @@ import cluster from 'cluster';
 import { cpus } from 'os';
 import { createServer } from 'http';
 
-const numWorkers = 2;
+const numWorkers = process.env.WORKERS;
 
 if (cluster.isPrimary) {
   console.log(`Primary ${process.pid} is running`);
