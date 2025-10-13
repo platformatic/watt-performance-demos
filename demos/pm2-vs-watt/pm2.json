@@ -1,7 +1,7 @@
 {
   "apps" : [{
     "name": "server",
-    "script"    : "server.cjs",
+    "script"    : "server.js",
     "exec_mode" : "cluster"
   }]
 }
