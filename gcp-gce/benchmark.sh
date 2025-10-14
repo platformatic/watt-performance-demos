@@ -95,7 +95,8 @@ launch_instance() {
 		--tags="$NETWORK_TAG" \
 		--metadata="startup-script=${startup_script}" \
 		--project="$GCP_PROJECT" \
-		--quiet
+		--format='get(name)' \
+		--quiet >/dev/null
 
 	echo "$full_instance_name"
 }
@@ -197,9 +198,8 @@ main() {
 #!/bin/bash
 set -e
 
-# Update and install Docker
 apt-get update
-apt-get install -y docker.io docker-compose-v2
+apt-get install -y --no-install-recommends docker.io docker-compose-v2
 
 # Start Docker
 systemctl start docker
@@ -242,9 +242,8 @@ EOF
 #!/bin/bash
 set -x
 
-# Update and install Docker
 apt-get update
-apt-get install -y docker.io
+apt-get install -y --no-install-recommends docker.io
 
 # Start Docker
 systemctl start docker
