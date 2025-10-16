@@ -1,0 +1,237 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: next
+  labels:
+    app.kubernetes.io/name: wattpro
+    app.kubernetes.io/instance: next
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: next
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wattpro
+        app.kubernetes.io/instance: next
+    spec:
+      containers:
+        - name: demo-application
+          image: platformatic/next-node:latest
+          imagePullPolicy: Always
+          ports:
+            - name: 'app'
+              containerPort: 3000
+              protocol: 'TCP'
+          readinessProbe:
+            httpGet:
+              path: '/'
+              port: 'app'
+              scheme: 'HTTP'
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: '/'
+              port: 'app'
+              scheme: 'HTTP'
+            periodSeconds: 2
+            successThreshold: 1
+            timeoutSeconds: 1
+            failureThreshold: 5
+          startupProbe:
+            httpGet:
+              path: '/'
+              port: 'app'
+              scheme: 'HTTP'
+            initialDelaySeconds: 10
+            periodSeconds: 3
+            successThreshold: 1
+            failureThreshold: 15
+          resources:
+            requests:
+              memory: '450Mi'
+              cpu: '2000m'
+            limits:
+              cpu: '3000m'
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: next-watt
+  labels:
+    app.kubernetes.io/name: wattpro
+    app.kubernetes.io/instance: next-watt
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: next-watt
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wattpro
+        app.kubernetes.io/instance: next-watt
+    spec:
+      containers:
+        - name: demo-application
+          image: platformatic/next-watt:latest
+          imagePullPolicy: Always
+          ports:
+            - name: 'app'
+              containerPort: 3042
+              protocol: 'TCP'
+            - name: 'metrics'
+              containerPort: 9090
+              protocol: 'TCP'
+          readinessProbe:
+            httpGet:
+              path: '/'
+              port: 'app'
+              scheme: 'HTTP'
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: '/'
+              port: 'app'
+              scheme: 'HTTP'
+            periodSeconds: 2
+            successThreshold: 1
+            timeoutSeconds: 1
+            failureThreshold: 5
+          startupProbe:
+            httpGet:
+              path: '/'
+              port: 'app'
+              scheme: 'HTTP'
+            initialDelaySeconds: 10
+            periodSeconds: 3
+            successThreshold: 1
+            failureThreshold: 15
+          resources:
+            requests:
+              memory: '450Mi'
+              cpu: '2000m'
+            limits:
+              cpu: '3000m'
+            #requests:
+            #  memory: '450Mi'
+            #  cpu: '250m'
+            #limits:
+            #  cpu: '325m'
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: next-watt
+  labels:
+    app.kubernetes.io/name: 'wattpro'
+    app.kubernetes.io/instance: next-watt
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/instance: next-watt
+  ports:
+    - name: app
+      protocol: 'TCP'
+      port: 80
+      targetPort: 'app'
+    - name: 'metrics'
+      protocol: 'TCP'
+      port: 9090
+      targetPort: 'metrics'
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: next
+  labels:
+    app.kubernetes.io/name: 'wattpro'
+    app.kubernetes.io/instance: next
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/instance: next
+  ports:
+    - name: app
+      protocol: 'TCP'
+      port: 80
+      targetPort: 'app'
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: next-watt
+spec:
+  maxReplicas: 10
+  metrics:
+  - resource:
+      name: cpu
+      target:
+        averageUtilization: 50
+        type: Utilization
+    type: Resource
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: next-watt
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: next
+spec:
+  maxReplicas: 10
+  metrics:
+  - resource:
+      name: cpu
+      target:
+        averageUtilization: 50
+        type: Utilization
+    type: Resource
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: next
+
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: next-watt
+#spec:
+#  tls:
+#    - hosts:
+#        - next-watt.demo.plt
+#      secretName: gw-tls
+#  rules:
+#    - host: next-watt.demo.plt
+#      http:
+#        paths:
+#          - path: /
+#            pathType: Prefix
+#            backend:
+#              service:
+#                name: next-watt
+#                port:
+#                  number: 80
+#
+#---
+#apiVersion: v1
+#kind: Secret
+#metadata:
+#  name: gw-tls
+#data:
+#  tls.crt: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURRakNDQWlxZ0F3SUJBZ0lVYzhaL1BWNkQ0clIxRzlYa3p4VG8zSUZ5dTFRd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0pqRVJNQThHQTFVRUF3d0lLaTVuZHk1d2JIUXhFVEFQQmdOVkJBb01DQ291WjNjdWNHeDBNQjRYRFRJMApNRFl4TnpJek1qVXlPVm9YRFRJMU1EWXhOekl6TWpVeU9Wb3dKakVSTUE4R0ExVUVBd3dJS2k1bmR5NXdiSFF4CkVUQVBCZ05WQkFvTUNDb3VaM2N1Y0d4ME1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0MKQVFFQXhRdm8xOE43N1ZndkJTQW1yYVBkU1dZUkFTMzBwS3pQZ1h3MTE5aVB5L1owOWIraTM5TUNhV3gwVkI1dwpnOWtxbU81OVE2Q1ZyS1o3Sk5lVUhqUEJEb1BtSlBUcjl1SzZDZ3pZOCtEQTVOSXlCL2JHNmlQd0lJbHFHQWh2ClV3M0ZrSTI2RmZ6RXg5Y3k2UHhxVCtLZWdSYjRyZmlhNWptYUZUcktNcE9Kd3NpSE5ya2lOeFZhOGpEdGEwS0sKY0taeTZNWGZzb0RsWGJmSTBRQ2lhZEtNWVJ3YzV5RGNDSjZXd01JdFZKVlBWUUNHcTJJRXZDL0pwWVJYc21aUApSSmpSWkJldlRqMTdNOS9tUHhZdWVjeEhTTDNFK0wrQWlzS3pCb3FTYlljN0RCZk91eG53dElGa1JRTnk4Q0VECnJCK3pPc1MwNlNtazFPMSttOWVseU5PcnZ3SURBUUFCbzJnd1pqQWRCZ05WSFE0RUZnUVVNdTZPcXFFZnBvOWEKWnRnMFhYb3VZbzE1WEpNd0h3WURWUjBqQkJnd0ZvQVVNdTZPcXFFZnBvOWFadGcwWFhvdVlvMTVYSk13RHdZRApWUjBUQVFIL0JBVXdBd0VCL3pBVEJnTlZIUkVFRERBS2dnZ3FMbWQzTG5Cc2REQU5CZ2txaGtpRzl3MEJBUXNGCkFBT0NBUUVBbjRxRkNGd2NmNUNuQXNwWUdhanlGVDBVUEhlaVp2OUdyQkc4Q3FCMStLZExLUnc0N0IzejhXYjEKTFRPNEpGZmhnSGlWY1MyS0o0aDlkSzF5dDVvTmlxc1dPcFV6dGJDOG5qUi9zQk5XNkxNais2TC8rZzRySTczZwo1b1d0RCtFTXJFSGZsZkNuN3hQUWhqNGtiZnRQMEoxU0lXalc0VERjVVZQOXV2ZVlaRjdFZWg0RDUzMXdEK3llClFvRHNLMGZDMTNxdHNnczA4Q3phZHg1OE5JeGVITlN3ZjJvL3dOaGd3TndYYjFzWHQ2WEJSUjNrdDhqdjR5S1EKWjlsN1lCcnNxMzc2d2pOQ0VDVDM1N3N3VERFSVFmTUtIWkhJZUJQOCtNSFBGbWtRV2hqWWVQMmlOSEl3M1hROApxNmZ6QTdOanlDQTJ4TEVuRE83OHZIZmdUanVablE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+#  tls.key: "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRREZDK2pYdzN2dFdDOEYKSUNhdG85MUpaaEVCTGZTa3JNK0JmRFhYMkkvTDluVDF2NkxmMHdKcGJIUlVIbkNEMlNxWTduMURvSldzcG5zawoxNVFlTThFT2crWWs5T3YyNHJvS0ROano0TURrMGpJSDlzYnFJL0FnaVdvWUNHOVREY1dRamJvVi9NVEgxekxvCi9HcFA0cDZCRnZpdCtKcm1PWm9WT3NveWs0bkN5SWMydVNJM0ZWcnlNTzFyUW9wd3BuTG94ZCt5Z09WZHQ4alIKQUtKcDBveGhIQnpuSU53SW5wYkF3aTFVbFU5VkFJYXJZZ1M4TDhtbGhGZXlaazlFbU5Ga0Y2OU9QWHN6MytZLwpGaTU1ekVkSXZjVDR2NENLd3JNR2lwSnRoenNNRjg2N0dmQzBnV1JGQTNMd0lRT3NIN002eExUcEthVFU3WDZiCjE2WEkwNnUvQWdNQkFBRUNnZ0VBV3BXUEJTR281d09UR2hnZHI5V1U5UmttMkJQNFUzdmVLUGloQ0FsV2tiMUwKSjI1aHdlT1BTRWZEY3FoTHNWRTBjL212UEZlbWR5aFJsQzVHdVZ1eGRLck9NazhsNnVsdi9RN0s3ZEowMnJ5RwpvNEtmRHlSV1Q1N2NWeEFKblhUSFRoelpYeUpFbEZvcDNWR3N6ZXl3VVVmdUtvd1BLYWR4WGpFWW93ZVFYU3BpCml4aEtxaVlXd2lSUFpmQTZNLy9lOCsrcDNVUzdRU21kcTBvaGRsRnJhL0ZvZ2twbnR6eXpGeVV4SXYxdDhkMzgKcFh4eS9EYzZmS3pabDFiUnBCOWZGRFpsKzdUMFBGa0RjQVN4OVNZdlkzMmtHd3EwUGowdEhrdUFWNldoa2EraApvdHdFTE5XNFVEL3plOEpMalhZZzYrU0t3S2tlNmVOVEk4QzAwRGVuZ1FLQmdRRDgwMWhML1J4TmZSbElSczVsCmxtbFJCeThBOGRVRzluOGY2WkVaV1c1ME5CckN2aG1rK0QyeGIzdmhBSGoxVk9aN2FZWW8yTS9NR1pkaG1XY1UKeHZGQ3lGRmRZaVV6WTVNR0FHekR3UituaE13d0swTjNFbG5DcWJ4bVJBSzFRVkNjd1ZBVnRiOUdUTDFzdS95awplRXlEbU13SmJoN2dnaklwckR3NHg2eWtOUUtCZ1FESGhVWkc2VFhRNDJSeUVxV2hOcnpFY3U5azl1MjcwaXpYCmZveW9NWW9DdDdSZFpFZHZtMGtFSlcxaDRDZWdzN3NHZUNtd0xHNVlNYm5zOUFPamZWKy9IUVVMTldxckx6Z1QKc2I2K3FDZWZqQmVWYUo0SUNPcUt0VHpabko2TUhxYXNsWnhqSlNZaWlwLytXdGJ6elNwN1Yyd3NkTUZiRWR6dgovNTN2cGRKbW93S0JnQXZPQW0xcDRBeHVMdVFGQ2xZTDg5Ym9zdlVrVllJQnVHWFJEZ2xVOTZkTlY0S0lSY0pDCkpQOUg2VXpVTE5HbnFTdFIvZ1dpT2ZHWnNFdktVZG5TZ0NsU0dScDNIcTJMbEszUEQwVUVtMm5DOVpXNkwyZzcKM3gwTHQ5UStrTEhOM3VteXpQNTJnZnZTVVhYbVFTR2N6RlhJcUo0NEdoRDVnMFlXMktqK0NiMlJBb0dBZFppTQp3bERFQWxsMEkzUHdJV1Brd0pqSmxxV2ZtenNXYVBEU3NITjZWMzIxRmZKNzFFRWZPUTFpT2ZUbkJtWElqdGlXCklac2VjbWJrb2M5MHNaQzh0U1RDaTBleGxqSGZpR1FUKzhXYWpRUUNCbkxCNmhSdlFNL3ZqSWN1UDRIMVZQVmQKVm1aWDRyWDM5Ty9QajZUV0xCcHJ6SXdJUnNmeGc1Y1NuR1FNN2FjQ2dZRUF3Vjc5ZzNySFlTQitSZmJ3WklNLwpmWW40MCtKb0YxTUpBVmhabk0zbVU2RDF2ZlF0MEs1YWU0ZEFSTnlzbEF5ZWkyUDlsVVliTUFwdDF0aStDUlVEClRJU3Z6QmtrUklJaU5iWXlDSDNWL2RMZ1E3Y3lpcisxdTRhZnBCQWVXZ0tCRzFqMWdxNzJPbzk4elN3QWRUblgKSXlJZ05UN2N1QjlRbWFWTHRWOGl6NHc9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K"
+#type: kubernetes.io/tls
