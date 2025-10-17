@@ -5,8 +5,7 @@
       "level": "{PLT_SERVER_LOGGER_LEVEL}"
     },
     "verticalScaler": {
-      "enabled": true,
-      "maxWorkers": 100
+      "enabled": false
     },
     "server": {
       "hostname": "{PLT_SERVER_HOSTNAME}",
