@@ -81,9 +81,11 @@ spec:
           env:
             - name: SCRIPT_NAME
               value: "start:watt"
+            - name: WORKERS
+              value: "3"
           ports:
             - name: 'app'
-              containerPort: 3042
+              containerPort: 3000
               protocol: 'TCP'
             - name: 'metrics'
               containerPort: 9090
@@ -120,11 +122,6 @@ spec:
               cpu: '2000m'
             limits:
               cpu: '3000m'
-            #requests:
-            #  memory: '450Mi'
-            #  cpu: '250m'
-            #limits:
-            #  cpu: '325m'
 
 ---
 apiVersion: v1
