@@ -11,12 +11,12 @@ DEMO_NAME="${1:-$DEMO_NAME}"
 CLUSTER_NAME="${CLUSTER_NAME:-watt-benchmark-$(date +%s)}"
 AWS_PROFILE="${AWS_PROFILE}"
 NODE_TYPE="${NODE_TYPE:-m5.2xlarge}"
-NODE_COUNT="${NODE_COUNT:-4}"
+NODE_COUNT="${NODE_COUNT:-3}"
 DEMO_SOURCE_DIR="$PROJECT_ROOT/demos/$DEMO_NAME"
 KUBE_MANIFEST="${DEMO_SOURCE_DIR}/kube.yaml"
 AUTOCANNON_IMAGE="${AUTOCANNON_IMAGE:-platformatic/autocannon:latest}"
 AMI_ID="${AMI_ID:-ami-07b2b18045edffe90}" # Amazon Linux 2023 arm64
-AUTOCANNON_INSTANCE_TYPE="${AUTOCANNON_INSTANCE_TYPE:-t3.micro}"
+AUTOCANNON_INSTANCE_TYPE="${AUTOCANNON_INSTANCE_TYPE:-c7gn.large}"
 
 # Infrastructure resource names (set by creation functions)
 CLUSTER_ROLE_NAME=""
@@ -595,21 +595,34 @@ wait_for_pods() {
 	local retry_delay=5
 
 	for ((i = 1; i <= max_attempts; i++)); do
-		# Get all pods and check if they're all running
-		local pod_status=$(kubectl --context "$KUBE_CONTEXT" get pods --all-namespaces --no-headers 2>/dev/null | grep -v "kube-system" | grep -v "Running" || echo "")
+		# Get all non-kube-system pods
+		local pods=$(kubectl --context "$KUBE_CONTEXT" get pods --all-namespaces --no-headers 2>/dev/null | grep -v "kube-system" || echo "")
 
-		if [[ -z "$pod_status" ]]; then
-			# Check if there are any pods at all
-			local pod_count=$(kubectl --context "$KUBE_CONTEXT" get pods --all-namespaces --no-headers 2>/dev/null | grep -v "kube-system" | wc -l)
-			if [[ "$pod_count" -gt 0 ]]; then
-				success "All pods are running"
-				kubectl --context "$KUBE_CONTEXT" get pods --all-namespaces | grep -v "kube-system"
-				return 0
+		if [[ -z "$pods" ]]; then
+			if ((i % 10 == 0)); then
+				log "No pods found yet... (attempt $i/$max_attempts)"
 			fi
+			sleep "$retry_delay"
+			continue
+		fi
+
+		# Check if all pods are ready (status shows "Running" and ready count matches total count)
+		local not_ready=$(echo "$pods" | awk '{
+			# Extract ready count (e.g., "1/1" -> both should match)
+			split($3, ready, "/");
+			if (ready[1] != ready[2] || $4 != "Running") {
+				print $0
+			}
+		}')
+
+		if [[ -z "$not_ready" ]]; then
+			success "All pods are ready"
+			kubectl --context "$KUBE_CONTEXT" get pods --all-namespaces | grep -v "kube-system"
+			return 0
 		fi
 
 		if ((i % 10 == 0)); then
-			log "Still waiting for pods... (attempt $i/$max_attempts)"
+			log "Still waiting for pods to be ready... (attempt $i/$max_attempts)"
 			kubectl --context "$KUBE_CONTEXT" get pods --all-namespaces | grep -v "kube-system" || true
 		fi
 		sleep "$retry_delay"
@@ -719,9 +732,9 @@ sleep 10
 echo 'Pulling autocannon image'
 docker pull $AUTOCANNON_IMAGE
 
-# Run autocannon benchmark with node IP and service ports for health checks
+# Run autocannon benchmark with node IP
 echo 'Starting benchmark against node $node_ip'
-docker run -e TARGET_URL=$node_ip -e DEMO_NAME=$DEMO_NAME -e SERVICE_PORTS=$service_ports $AUTOCANNON_IMAGE
+docker run -e TARGET_URL=$node_ip -e DEMO_NAME=$DEMO_NAME $AUTOCANNON_IMAGE
 
 echo 'Benchmark completed - instance will terminate'
 EOF

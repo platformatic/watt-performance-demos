@@ -14,6 +14,9 @@ RUN chmod +x /entrypoints/main.sh
 COPY ./demos/pm2-vs-watt/autocannon.sh /entrypoints/pm2-vs-watt.sh
 RUN chmod +x /entrypoints/pm2-vs-watt.sh
 
+COPY ./demos/next-watt/autocannon.sh /entrypoints/next-watt.sh
+RUN chmod +x /entrypoints/next-watt.sh
+
 RUN npm install -g autocannon && npm cache clean --force
 
 ENV TARGET_URL=http://host.docker.internal

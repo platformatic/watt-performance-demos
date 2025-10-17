@@ -16,8 +16,11 @@ spec:
     spec:
       containers:
         - name: demo-application
-          image: platformatic/next-node:latest
+          image: platformatic/next-watt:latest
           imagePullPolicy: Always
+          env:
+            - name: SCRIPT_NAME
+              value: "start:node"
           ports:
             - name: 'app'
               containerPort: 3000
@@ -75,6 +78,9 @@ spec:
         - name: demo-application
           image: platformatic/next-watt:latest
           imagePullPolicy: Always
+          env:
+            - name: SCRIPT_NAME
+              value: "start:watt"
           ports:
             - name: 'app'
               containerPort: 3042

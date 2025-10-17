@@ -85,12 +85,11 @@ Demos provide a `kube.yaml` manifest with:
 
 **Annotation-based discovery**: Script finds all services with `benchmark.platformatic.dev/expose: "true"` and configures security groups for the specified NodePorts. Autocannon accesses services via node private IP + NodePort.
 
-**Health checks**: The autocannon Docker container includes built-in health check logic that runs before benchmarks:
-- The `SERVICE_PORTS` environment variable (comma-separated list) specifies which ports to check
-- `lib/dockerfile-entrypoint.sh` performs HTTP health checks for each service
-- Uses curl to verify services are accessible from within the VPC
-- Retries with timeout (60 attempts × 5 second delay = 5 minutes max)
-- Only proceeds to benchmarking once all services respond with HTTP 200
+**Pod readiness verification**: The benchmark script uses kubectl to verify pods are ready before launching autocannon:
+- `wait_for_pods()` checks that all pods have matching ready counts (e.g., "1/1") and "Running" status
+- Verifies actual pod readiness conditions, not just container status
+- Fails fast if pods don't become ready, avoiding unnecessary EC2 instance costs
+- Autocannon container can immediately start benchmarking without additional health checks
 
 ## Cloud Provider Implementation Guide
 
@@ -128,7 +127,10 @@ When adding a Kubernetes-based provider (e.g., `gcp-gke/`, `azure-aks/`):
    - Save context name as `KUBE_CONTEXT` variable
    - Use `kubectl --context "$KUBE_CONTEXT"` for all kubectl commands
 7. Apply `kube.yaml` from demo directory (must include NodePort services with annotation)
-8. Wait for pods to be ready
+8. **Wait for pods to be ready using kubectl**:
+   - Use `wait_for_pods()` to verify all pods have matching ready counts (e.g., "1/1")
+   - Check both ready status and "Running" state
+   - This ensures services are available before launching expensive resources
 9. **Find annotated NodePort services**:
    - Search for services with `benchmark.platformatic.dev/expose: "true"`
    - Extract service names and NodePort numbers
@@ -138,10 +140,7 @@ When adding a Kubernetes-based provider (e.g., `gcp-gke/`, `azure-aks/`):
     - Add ingress rules to cluster security group for each NodePort
     - Allow autocannon to reach nodes on specific ports
 11. Launch a separate VM/EC2 instance in the same VPC/subnet as cluster nodes
-12. Run autocannon on the VM with SERVICE_PORTS environment variable
-    - The autocannon container performs health checks before benchmarking
-    - Verifies all NodePort services are accessible from within VPC
-    - Only proceeds to benchmark once all services are healthy
+12. Run autocannon on the VM (no health checks needed - pods already verified ready)
 13. Monitor VM console output and display results
 
 **Important Design Decisions**:
