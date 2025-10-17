@@ -32,7 +32,6 @@ AUTOCANNON_INSTANCE_ID=""
 SECURITY_GROUP_ID=""
 
 cleanup_instances() {
-	# Terminate autocannon instance
 	if [[ -n "$AUTOCANNON_INSTANCE_ID" ]]; then
 		log "Terminating autocannon instance: $AUTOCANNON_INSTANCE_ID"
 		aws ec2 terminate-instances \
@@ -40,7 +39,6 @@ cleanup_instances() {
 			--profile "$AWS_PROFILE" >/dev/null 2>&1 || true
 	fi
 
-	# Delete node group first
 	if [[ -n "$CLUSTER_NAME" ]]; then
 		local nodegroup_name="$CLUSTER_NAME-nodegroup"
 		log "Checking for node group: $nodegroup_name"
@@ -64,7 +62,6 @@ cleanup_instances() {
 		fi
 	fi
 
-	# Delete EKS cluster
 	if [[ -n "$CLUSTER_NAME" ]]; then
 		log "Checking if cluster exists: $CLUSTER_NAME"
 
@@ -84,7 +81,6 @@ cleanup_instances() {
 		fi
 	fi
 
-	# Delete security group
 	if [[ -n "$SECURITY_GROUP_ID" ]]; then
 		log "Deleting security group: $SECURITY_GROUP_ID"
 		sleep 5
@@ -93,11 +89,9 @@ cleanup_instances() {
 			--profile "$AWS_PROFILE" >/dev/null 2>&1 || true
 	fi
 
-	# Delete VPC resources
 	if [[ -n "$VPC_ID" ]]; then
 		log "Deleting VPC resources..."
 
-		# Detach and delete internet gateway
 		if [[ -n "$IGW_ID" ]]; then
 			aws ec2 detach-internet-gateway \
 				--internet-gateway-id "$IGW_ID" \
@@ -108,7 +102,6 @@ cleanup_instances() {
 				--profile "$AWS_PROFILE" 2>/dev/null || true
 		fi
 
-		# Delete subnets
 		if [[ -n "$SUBNET_IDS" ]]; then
 			IFS=',' read -ra SUBNETS <<< "$SUBNET_IDS"
 			for subnet in "${SUBNETS[@]}"; do
@@ -118,20 +111,17 @@ cleanup_instances() {
 			done
 		fi
 
-		# Delete route table (custom route tables only)
 		if [[ -n "$RTB_ID" ]]; then
 			aws ec2 delete-route-table \
 				--route-table-id "$RTB_ID" \
 				--profile "$AWS_PROFILE" 2>/dev/null || true
 		fi
 
-		# Delete VPC
 		aws ec2 delete-vpc \
 			--vpc-id "$VPC_ID" \
 			--profile "$AWS_PROFILE" 2>/dev/null || true
 	fi
 
-	# Delete IAM roles (detach policies first)
 	if [[ -n "$NODE_ROLE_NAME" ]]; then
 		log "Deleting node IAM role: $NODE_ROLE_NAME"
 		aws iam detach-role-policy \
@@ -172,10 +162,6 @@ validate_eks_tools() {
 		return 1
 	fi
 
-	if ! check_tool "jq" "Please install jq for JSON parsing"; then
-		return 1
-	fi
-
 	success "EKS tools validated"
 	return 0
 }
@@ -196,7 +182,6 @@ validate_demo_manifests() {
 create_security_group_for_autocannon() {
 	log "Creating security group for autocannon instance..."
 
-	# Get the VPC ID of the EKS cluster
 	local vpc_id=$(aws eks describe-cluster \
 		--name "$CLUSTER_NAME" \
 		--profile "$AWS_PROFILE" \
@@ -230,7 +215,6 @@ configure_node_security_for_nodeports() {
 
 	log "Configuring node security groups for NodePort access..."
 
-	# Get node security group from EKS cluster
 	local node_sg=$(aws eks describe-cluster \
 		--name "$CLUSTER_NAME" \
 		--profile "$AWS_PROFILE" \
@@ -249,14 +233,12 @@ configure_node_security_for_nodeports() {
 	for port in "${PORTS[@]}"; do
 		log "Adding ingress rule for NodePort $port..."
 
-		# Allow autocannon security group to access this NodePort
 		aws ec2 authorize-security-group-ingress \
 			--group-id "$node_sg" \
 			--protocol tcp \
 			--port "$port" \
 			--source-group "$SECURITY_GROUP_ID" \
 			--profile "$AWS_PROFILE" 2>/dev/null || {
-			# Rule might already exist, that's ok
 			log "  (rule may already exist, continuing...)"
 		}
 	done
@@ -267,7 +249,6 @@ configure_node_security_for_nodeports() {
 create_vpc_stack() {
 	log "Creating VPC infrastructure..."
 
-	# Create VPC
 	VPC_ID=$(aws ec2 create-vpc \
 		--cidr-block 10.0.0.0/16 \
 		--profile "$AWS_PROFILE" \
@@ -276,13 +257,11 @@ create_vpc_stack() {
 		--output text)
 	log "Created VPC: $VPC_ID"
 
-	# Enable DNS hostnames
 	aws ec2 modify-vpc-attribute \
 		--vpc-id "$VPC_ID" \
 		--enable-dns-hostnames \
 		--profile "$AWS_PROFILE"
 
-	# Create Internet Gateway
 	local igw_id=$(aws ec2 create-internet-gateway \
 		--profile "$AWS_PROFILE" \
 		--tag-specifications "ResourceType=internet-gateway,Tags=[{Key=Name,Value=eks-igw-$CLUSTER_NAME}]" \
@@ -290,19 +269,16 @@ create_vpc_stack() {
 		--output text)
 	log "Created Internet Gateway: $igw_id"
 
-	# Attach IGW to VPC
 	aws ec2 attach-internet-gateway \
 		--vpc-id "$VPC_ID" \
 		--internet-gateway-id "$igw_id" \
 		--profile "$AWS_PROFILE"
 
-	# Get availability zones
 	local azs=($(aws ec2 describe-availability-zones \
 		--profile "$AWS_PROFILE" \
 		--query 'AvailabilityZones[0:2].ZoneName' \
 		--output text))
 
-	# Create public subnets
 	local subnet1=$(aws ec2 create-subnet \
 		--vpc-id "$VPC_ID" \
 		--cidr-block 10.0.1.0/24 \
@@ -323,7 +299,6 @@ create_vpc_stack() {
 
 	log "Created subnets: $subnet1, $subnet2"
 
-	# Enable auto-assign public IP for subnets
 	aws ec2 modify-subnet-attribute \
 		--subnet-id "$subnet1" \
 		--map-public-ip-on-launch \
@@ -334,7 +309,6 @@ create_vpc_stack() {
 		--map-public-ip-on-launch \
 		--profile "$AWS_PROFILE"
 
-	# Create route table
 	local rtb_id=$(aws ec2 create-route-table \
 		--vpc-id "$VPC_ID" \
 		--profile "$AWS_PROFILE" \
@@ -343,14 +317,12 @@ create_vpc_stack() {
 		--output text)
 	log "Created route table: $rtb_id"
 
-	# Create route to IGW
 	aws ec2 create-route \
 		--route-table-id "$rtb_id" \
 		--destination-cidr-block 0.0.0.0/0 \
 		--gateway-id "$igw_id" \
 		--profile "$AWS_PROFILE" >/dev/null
 
-	# Associate route table with subnets
 	aws ec2 associate-route-table \
 		--route-table-id "$rtb_id" \
 		--subnet-id "$subnet1" \
@@ -361,7 +333,6 @@ create_vpc_stack() {
 		--subnet-id "$subnet2" \
 		--profile "$AWS_PROFILE" >/dev/null
 
-	# Store subnet IDs as comma-separated list
 	SUBNET_IDS="$subnet1,$subnet2"
 	IGW_ID="$igw_id"
 	RTB_ID="$rtb_id"
@@ -377,7 +348,6 @@ create_cluster_iam_role() {
 
 	log "Creating EKS cluster IAM role: $role_name"
 
-	# Create trust policy
 	cat >/tmp/cluster-trust-policy.json <<EOF
 {
   "Version": "2012-10-17",
@@ -393,20 +363,17 @@ create_cluster_iam_role() {
 }
 EOF
 
-	# Create role
 	aws iam create-role \
 		--role-name "$role_name" \
 		--assume-role-policy-document file:///tmp/cluster-trust-policy.json \
 		--profile "$AWS_PROFILE" \
 		>/dev/null
 
-	# Attach required policy
 	aws iam attach-role-policy \
 		--policy-arn arn:aws:iam::aws:policy/AmazonEKSClusterPolicy \
 		--role-name "$role_name" \
 		--profile "$AWS_PROFILE"
 
-	# Get role ARN
 	CLUSTER_ROLE_ARN=$(aws iam get-role \
 		--role-name "$role_name" \
 		--profile "$AWS_PROFILE" \
@@ -423,7 +390,6 @@ create_node_iam_role() {
 
 	log "Creating EKS node IAM role: $role_name"
 
-	# Create trust policy
 	cat >/tmp/node-trust-policy.json <<EOF
 {
   "Version": "2012-10-17",
@@ -439,14 +405,12 @@ create_node_iam_role() {
 }
 EOF
 
-	# Create role
 	aws iam create-role \
 		--role-name "$role_name" \
 		--assume-role-policy-document file:///tmp/node-trust-policy.json \
 		--profile "$AWS_PROFILE" \
 		>/dev/null
 
-	# Attach required policies
 	aws iam attach-role-policy \
 		--policy-arn arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy \
 		--role-name "$role_name" \
@@ -462,7 +426,6 @@ EOF
 		--role-name "$role_name" \
 		--profile "$AWS_PROFILE"
 
-	# Get role ARN
 	NODE_ROLE_ARN=$(aws iam get-role \
 		--role-name "$role_name" \
 		--profile "$AWS_PROFILE" \
@@ -477,7 +440,6 @@ create_eks_cluster() {
 	log "Creating EKS cluster: $CLUSTER_NAME"
 	log "This may take 15-20 minutes..."
 
-	# Create cluster
 	aws eks create-cluster \
 		--name "$CLUSTER_NAME" \
 		--role-arn "$CLUSTER_ROLE_ARN" \
@@ -485,7 +447,6 @@ create_eks_cluster() {
 		--profile "$AWS_PROFILE" \
 		>/dev/null
 
-	# Wait for cluster to be active
 	log "Waiting for cluster to be ACTIVE..."
 	local max_attempts=60
 	local retry_delay=15
@@ -517,7 +478,6 @@ create_nodegroup() {
 
 	log "Creating managed node group: $nodegroup_name"
 
-	# Create node group
 	aws eks create-nodegroup \
 		--cluster-name "$CLUSTER_NAME" \
 		--nodegroup-name "$nodegroup_name" \
@@ -528,7 +488,6 @@ create_nodegroup() {
 		--profile "$AWS_PROFILE" \
 		>/dev/null
 
-	# Wait for node group to be active
 	log "Waiting for node group to be ACTIVE..."
 	local max_attempts=60
 	local retry_delay=10
@@ -595,7 +554,6 @@ wait_for_pods() {
 	local retry_delay=5
 
 	for ((i = 1; i <= max_attempts; i++)); do
-		# Get all non-kube-system pods
 		local pods=$(kubectl --context "$KUBE_CONTEXT" get pods --all-namespaces --no-headers 2>/dev/null | grep -v "kube-system" || echo "")
 
 		if [[ -z "$pods" ]]; then
@@ -797,13 +755,11 @@ monitor_autocannon() {
 			--latest \
 			--profile "$AWS_PROFILE")
 
-		# Show only new output
 		if [[ -n "$current_output" && "$current_output" != "$previous_output" ]]; then
 			previous_output="$current_output"
 			all_output+="$current_output"
 		fi
 
-		# Check if benchmark completed
 		if echo "$current_output" | grep -q "Benchmark completed"; then
 			echo "$all_output" | parse_console_output
 			success "Benchmark execution completed!"
@@ -836,7 +792,6 @@ main() {
 	create_node_iam_role
 	create_eks_cluster
 
-	# Setup kubeconfig with custom context
 	KUBE_CONTEXT="$CLUSTER_NAME"
 	log "Updating kubeconfig with context: $KUBE_CONTEXT"
 	aws eks update-kubeconfig \
@@ -844,14 +799,12 @@ main() {
 		--profile "$AWS_PROFILE" \
 		--alias "$KUBE_CONTEXT"
 
-	# Create node group
 	create_nodegroup
-
 	wait_for_nodes
+
 	apply_demo_manifests
 	wait_for_pods
 
-	# Find annotated NodePort services
 	local services=$(find_annotated_nodeport_services)
 
 	if [[ -z "$services" ]]; then
@@ -859,7 +812,6 @@ main() {
 		exit 1
 	fi
 
-	# Get node private IP
 	local node_ip=$(get_node_private_ip)
 
 	if [[ -z "$node_ip" ]]; then
@@ -867,19 +819,15 @@ main() {
 		exit 1
 	fi
 
-	# Get comma-separated list of NodePorts for security group configuration
 	local node_ports=$(get_node_ports_list "$services")
 
 	log "Services will be accessible at: $node_ip"
 	log "NodePorts: $node_ports"
 
-	# Create security group for autocannon instance (must be in same VPC as EKS)
 	create_security_group_for_autocannon
 
-	# Configure node security groups to allow NodePort traffic from autocannon
 	configure_node_security_for_nodeports "$node_ports"
 
-	# Launch autocannon EC2 instance with node IP and service ports
 	launch_autocannon_instance "$node_ip" "$node_ports"
 
 	log "Waiting for autocannon instance to be running..."
@@ -887,7 +835,6 @@ main() {
 		--instance-ids "$AUTOCANNON_INSTANCE_ID" \
 		--profile "$AWS_PROFILE"
 
-	# Monitor autocannon output
 	monitor_autocannon "$AUTOCANNON_INSTANCE_ID"
 
 	success "Benchmark orchestration completed!"

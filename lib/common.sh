@@ -59,7 +59,7 @@ validate_aws_tools() {
 validate_common_tools() {
 	log "Validating common tools..."
 
-	local tools=("curl")
+	local tools=("curl" "jq")
 	for tool in "${tools[@]}"; do
 		if ! check_tool "$tool"; then
 			return 1
