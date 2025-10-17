@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schemas.platformatic.dev/@platformatic/next/3.0.6.json",
+  "runtime": {
+    "logger": {
+      "level": "{PLT_SERVER_LOGGER_LEVEL}"
+    },
+    "verticalScaler": {
+      "enabled": true,
+      "maxWorkers": 100
+    },
+    "server": {
+      "hostname": "{PLT_SERVER_HOSTNAME}",
+      "port": "{PORT}"
+    },
+    "managementApi": "{PLT_MANAGEMENT_API}"
+  }
+}
