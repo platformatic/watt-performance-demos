@@ -4,7 +4,7 @@ services:
   pm2:
     image: platformatic/pm2-vs-watt:latest
     ports:
-      - "3000:3000"
+      - "30000:3000"
     environment:
       - SCRIPT_NAME=pm2r-start
       - WORKERS=2
@@ -17,7 +17,7 @@ services:
   watt:
     image: platformatic/pm2-vs-watt:latest
     ports:
-      - "3001:3000"
+      - "30001:3000"
     environment:
       - SCRIPT_NAME=watt-start
       - WORKERS=2
@@ -30,7 +30,7 @@ services:
   cluster:
     image: platformatic/pm2-vs-watt:latest
     ports:
-      - "3002:3000"
+      - "30002:3000"
     environment:
       - SCRIPT_NAME=cluster-start
       - WORKERS=2

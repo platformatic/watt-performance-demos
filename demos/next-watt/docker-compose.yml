@@ -1,0 +1,27 @@
+name: nextwatt
+
+services:
+  node:
+    image: platformatic/next-watt:latest
+    ports:
+      - "30000:3000"
+    environment:
+      - SCRIPT_NAME=start:node
+    deploy:
+      resources:
+        reservations:
+          cpus: 2
+          memory: 4gb
+
+  watt:
+    image: platformatic/next-watt:latest
+    ports:
+      - "30042:3000"
+    environment:
+      - SCRIPT_NAME=start:watt
+      - WORKERS=2
+    deploy:
+      resources:
+        reservations:
+          cpus: 2
+          memory: 4gb

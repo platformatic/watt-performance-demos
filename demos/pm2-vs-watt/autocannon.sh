@@ -9,10 +9,10 @@ if [ -z "$TARGET_URL" ]; then
 fi
 
 echo "== PM2 =="
-autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3000"
+autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30000"
 
 echo "== Watt =="
-autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3001"
+autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30001"
 
 echo "== Node Cluster =="
-autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:3002"
+autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30002"

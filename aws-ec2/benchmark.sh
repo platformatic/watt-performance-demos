@@ -13,7 +13,6 @@ INSTANCE_TYPE="${INSTANCE_TYPE:-m8g.2xlarge}"
 AWS_PROFILE="${AWS_PROFILE}"
 CANNON_IMAGE="${AUTOCANNON_IMAGE:-platformatic/autocannon:latest}"
 
-DEMO_PORTS="3000-3002"
 DEMO_INSTANCE_ID=""
 DEMO_SOURCE_DIR="$PROJECT_ROOT/demos/$DEMO_NAME"
 AUTOCANNON_INSTANCE_ID=""
@@ -50,6 +49,22 @@ trap generic_cleanup EXIT INT TERM
 create_security_group() {
 	log "Creating security group for benchmark..."
 
+	# Extract ports from docker-compose.yml
+	local compose_file="$DEMO_SOURCE_DIR/docker-compose.yml"
+	if [[ ! -f "$compose_file" ]]; then
+		error "docker-compose.yml not found at $compose_file"
+		exit 1
+	fi
+
+	local ports=($(awk -F'"' '/- ".*:.*"/ {split($2, a, ":"); print a[1]}' "$compose_file"))
+	if [[ ${#ports[@]} -eq 0 ]]; then
+		error "No ports found in docker-compose.yml"
+		exit 1
+	fi
+
+	local ports_csv=$(IFS=,; echo "${ports[*]}")
+	log "Detected ports from docker-compose.yml: $ports_csv"
+
 	VPC_ID=$(aws ec2 describe-vpcs \
 		--filters "Name=is-default,Values=true" \
 		--query 'Vpcs[0].VpcId' \
@@ -68,7 +83,7 @@ create_security_group() {
 
 	SECURITY_GROUP_ID=$(aws ec2 create-security-group \
 		--group-name "$sg_name" \
-		--description "Temporary security group for benchmark (ports $DEMO_PORTS)" \
+		--description "Temporary security group for benchmark (ports $ports_csv)" \
 		--vpc-id "$VPC_ID" \
 		--query 'GroupId' \
 		--output text \
@@ -76,38 +91,19 @@ create_security_group() {
 
 	log "Created security group: $SECURITY_GROUP_ID"
 
-	# Parse DEMO_PORTS and add ingress rules
-	# Supports both "3000-3004" (range) and "3000,3001,3002" (comma-separated)
-	if [[ "$DEMO_PORTS" =~ ^[0-9]+-[0-9]+$ ]]; then
-		# Port range (e.g., "3000-3004")
-		local from_port="${DEMO_PORTS%-*}"
-		local to_port="${DEMO_PORTS#*-}"
-		log "Opening port range: $from_port-$to_port"
+	# Add ingress rule for each port
+	for port in "${ports[@]}"; do
+		log "Opening port: $port"
 
 		aws ec2 authorize-security-group-ingress \
 			--group-id "$SECURITY_GROUP_ID" \
 			--protocol tcp \
-			--port "$from_port-$to_port" \
+			--port "$port" \
 			--cidr 0.0.0.0/0 \
 			--profile $AWS_PROFILE >/dev/null
+	done
 
-	else
-		# Comma-separated ports (e.g., "3000,3001,3002")
-		IFS=',' read -ra PORTS <<<"$DEMO_PORTS"
-		for port in "${PORTS[@]}"; do
-			port=$(echo "$port" | xargs) # Trim whitespace
-			log "Opening port: $port"
-
-			aws ec2 authorize-security-group-ingress \
-				--group-id "$SECURITY_GROUP_ID" \
-				--protocol tcp \
-				--port "$port" \
-				--cidr 0.0.0.0/0 \
-				--profile $AWS_PROFILE >/dev/null
-		done
-	fi
-
-	success "Security group configured with ports: $DEMO_PORTS"
+	success "Security group configured with ports: $ports_csv"
 }
 
 launch_instance() {
@@ -271,9 +267,9 @@ EOF
 
 	DEMO_IP=$(get_instance_ip "$DEMO_INSTANCE_ID")
 	log "Demo instance IP: $DEMO_IP"
-	wait_for_http "$DEMO_IP" 3000
+	wait_for_http "$DEMO_IP" 30000
 
-	log "Creating autocannon instance with target $DEMO_IP on ports $DEMO_PORTS"
+	log "Creating autocannon instance with target $DEMO_IP"
 
 	IFS='' read -r -d '' ac_user_script <<EOF || true
 #!/bin/bash
