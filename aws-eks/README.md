@@ -17,9 +17,9 @@ This architecture provides realistic external load testing by running autocannon
 
 ## Prerequisites
 
-- **AWS CLI v2** - Installed and configured with appropriate credentials
-- **eksctl** - EKS cluster management tool ([installation guide](https://eksctl.io/installation/))
+- **AWS CLI v2** - Installed and configured with appropriate credentials (version 2.12.3 or later)
 - **kubectl** - Kubernetes CLI tool ([installation guide](https://kubernetes.io/docs/tasks/tools/))
+- **jq** - JSON processor for parsing AWS CLI output
 - **curl** - Used to confirm service readiness
 
 ## Usage
@@ -58,12 +58,15 @@ Optional environment variables:
 
 ## How it Works
 
-1. **Validation** - Checks for required tools (AWS CLI, eksctl, kubectl) and validates that `kube.yaml` exists in the demo directory
+1. **Validation** - Checks for required tools (AWS CLI, kubectl, jq) and validates that `kube.yaml` exists in the demo directory
 
-2. **Cluster Creation** - Creates an EKS cluster with managed node groups
-   - Takes approximately 15-20 minutes
-   - Uses OIDC provider for IAM integration
-   - Automatically configures kubectl context
+2. **Infrastructure Creation** - Creates all required AWS resources using AWS CLI:
+   - VPC with public subnets, internet gateway, and route tables
+   - IAM role for EKS cluster control plane
+   - IAM role for worker nodes
+   - EKS cluster with managed node group
+   - Takes approximately 15-20 minutes total
+   - Automatically configures kubectl context with custom alias
 
 3. **Node Readiness** - Waits for all worker nodes to reach Ready state
 
@@ -82,12 +85,20 @@ Optional environment variables:
 
 8. **Launch Autocannon** - Starts an EC2 instance in same VPC/subnet as EKS nodes
    - Instance pulls the autocannon Docker image
+   - Performs health checks to verify all services are accessible
+   - Waits for all NodePort services to respond with HTTP 200
    - Runs load tests against node private IP + NodePorts
    - Provides realistic network testing from within VPC
 
 9. **Monitor Results** - Polls the EC2 instance console output and displays benchmark results
 
-10. **Cleanup** - Deletes the autocannon instance, EKS cluster, and security groups (triggered automatically on exit)
+10. **Cleanup** - Deletes all AWS resources in correct order (triggered automatically on exit):
+    - Autocannon EC2 instance
+    - EKS node group
+    - EKS cluster
+    - Security groups
+    - VPC resources (subnets, internet gateway, route table, VPC)
+    - IAM roles (cluster and node)
 
 ## Demo Kubernetes Manifest Requirements
 
@@ -207,7 +218,8 @@ The script automatically cleans up resources on exit, but ensure cleanup complet
 
 ### Cluster creation fails
 - Verify AWS credentials and permissions (requires EKS, EC2, VPC, IAM permissions)
-- Check if you've hit AWS service limits (EC2 instances, VPCs, etc.)
+- Check if you've hit AWS service limits (EC2 instances, VPCs, EKS clusters, etc.)
+- Ensure AWS CLI version is 2.12.3 or later (`aws --version`)
 
 ### Pods not starting
 - Check pod status: `kubectl get pods --all-namespaces`
@@ -220,9 +232,26 @@ The script automatically cleans up resources on exit, but ensure cleanup complet
 - Ensure security groups allow traffic
 
 ### Manual cleanup
-If the script exits unexpectedly and doesn't clean up:
+If the script exits unexpectedly and doesn't clean up, delete resources in this order:
 ```sh
-eksctl delete cluster --name <cluster-name> --region us-east-1 --profile <profile>
+# 1. Delete node group
+aws eks delete-nodegroup --cluster-name <cluster-name> --nodegroup-name <cluster-name>-nodegroup --region us-east-1 --profile <profile>
+
+# 2. Delete cluster
+aws eks delete-cluster --name <cluster-name> --region us-east-1 --profile <profile>
+
+# 3. Delete VPC resources (get VPC ID from AWS console or list VPCs with tag)
+aws ec2 describe-vpcs --filters "Name=tag:Name,Values=eks-vpc-<cluster-name>" --query "Vpcs[0].VpcId" --output text
+# Then delete IGW, subnets, route tables, and VPC using the VPC ID
+
+# 4. Delete IAM roles (detach policies first, then delete)
+aws iam detach-role-policy --role-name eks-node-role-<cluster-name> --policy-arn arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy --profile <profile>
+aws iam detach-role-policy --role-name eks-node-role-<cluster-name> --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly --profile <profile>
+aws iam detach-role-policy --role-name eks-node-role-<cluster-name> --policy-arn arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy --profile <profile>
+aws iam delete-role --role-name eks-node-role-<cluster-name> --profile <profile>
+
+aws iam detach-role-policy --role-name eks-cluster-role-<cluster-name> --policy-arn arn:aws:iam::aws:policy/AmazonEKSClusterPolicy --profile <profile>
+aws iam delete-role --role-name eks-cluster-role-<cluster-name> --profile <profile>
 ```
 
 ## Security Notes

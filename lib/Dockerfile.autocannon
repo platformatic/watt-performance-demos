@@ -5,6 +5,9 @@ ARG BUILD_TIME
 
 WORKDIR /app
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 COPY ./lib/dockerfile-entrypoint.sh /entrypoints/main.sh
 RUN chmod +x /entrypoints/main.sh
 

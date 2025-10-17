@@ -85,6 +85,13 @@ Demos provide a `kube.yaml` manifest with:
 
 **Annotation-based discovery**: Script finds all services with `benchmark.platformatic.dev/expose: "true"` and configures security groups for the specified NodePorts. Autocannon accesses services via node private IP + NodePort.
 
+**Health checks**: The autocannon Docker container includes built-in health check logic that runs before benchmarks:
+- The `SERVICE_PORTS` environment variable (comma-separated list) specifies which ports to check
+- `lib/dockerfile-entrypoint.sh` performs HTTP health checks for each service
+- Uses curl to verify services are accessible from within the VPC
+- Retries with timeout (60 attempts × 5 second delay = 5 minutes max)
+- Only proceeds to benchmarking once all services respond with HTTP 200
+
 ## Cloud Provider Implementation Guide
 
 ### VM-Based Implementation (EC2-style)
@@ -109,22 +116,33 @@ When adding a Kubernetes-based provider (e.g., `gcp-gke/`, `azure-aks/`):
 
 1. Create provider directory with `benchmark.sh` and `README.md`
 2. Source common functions: `source "$PROJECT_ROOT/lib/common.sh"`
-3. Implement `cleanup_instances()` function to delete both the cluster and autocannon EC2/VM instance
+3. Implement `cleanup_instances()` function to delete all resources (cluster, node group, VPC, IAM roles, autocannon instance)
 4. Set up trap handler: `trap generic_cleanup EXIT INT TERM`
-5. Create managed Kubernetes cluster
-6. Apply `kube.yaml` from demo directory (must include NodePort services with annotation)
-7. Wait for pods to be ready
-8. **Find annotated NodePort services**:
+5. **Create infrastructure using cloud CLI** (pure AWS CLI for EKS, no eksctl or CloudFormation):
+   - Create VPC with subnets, internet gateway, and route tables
+   - Create IAM roles (cluster role and node role)
+   - Create managed Kubernetes cluster
+   - Create managed node group
+6. **Setup kubeconfig with custom context**:
+   - Use `aws eks update-kubeconfig --alias <context-name>` (or equivalent)
+   - Save context name as `KUBE_CONTEXT` variable
+   - Use `kubectl --context "$KUBE_CONTEXT"` for all kubectl commands
+7. Apply `kube.yaml` from demo directory (must include NodePort services with annotation)
+8. Wait for pods to be ready
+9. **Find annotated NodePort services**:
    - Search for services with `benchmark.platformatic.dev/expose: "true"`
    - Extract service names and NodePort numbers
    - Get private IP of cluster node
-9. **Configure security groups**:
-   - Create security group for autocannon VM
-   - Add ingress rules to cluster security group for each NodePort
-   - Allow autocannon to reach nodes on specific ports
-10. Launch a separate VM/EC2 instance in the same VPC/subnet as cluster nodes
-11. Run autocannon on the VM targeting node private IP + NodePorts
-12. Monitor VM console output and display results
+10. **Configure security groups**:
+    - Create security group for autocannon VM
+    - Add ingress rules to cluster security group for each NodePort
+    - Allow autocannon to reach nodes on specific ports
+11. Launch a separate VM/EC2 instance in the same VPC/subnet as cluster nodes
+12. Run autocannon on the VM with SERVICE_PORTS environment variable
+    - The autocannon container performs health checks before benchmarking
+    - Verifies all NodePort services are accessible from within VPC
+    - Only proceeds to benchmark once all services are healthy
+13. Monitor VM console output and display results
 
 **Important Design Decisions**:
 - **NodePort instead of LoadBalancer**: Services use NodePort accessed via node private IPs
@@ -154,7 +172,7 @@ See `aws-eks/benchmark.sh` as reference implementation.
 
 ### AWS EKS (`aws-eks/benchmark.sh`)
 - `AWS_PROFILE` - (Required) AWS CLI profile to use
-- `DEMO_NAME` - (Required) Demo to benchmark (e.g., `k8s-next-watt`)
+- `DEMO_NAME` - (Required) Demo to benchmark (e.g., `next-watt`)
 - `CLUSTER_NAME` - EKS cluster name (default: `watt-benchmark-<timestamp>`)
 - `AWS_REGION` - AWS region (default: `us-east-1`)
 - `NODE_TYPE` - EC2 instance type for nodes (default: `t3.xlarge`)
@@ -162,6 +180,12 @@ See `aws-eks/benchmark.sh` as reference implementation.
 - `AUTOCANNON_IMAGE` - Autocannon Docker image (default: `platformatic/autocannon:latest`)
 - `AMI_ID` - Amazon Linux 2023 AMI for autocannon EC2 (default: `ami-07b2b18045edffe90`)
 - `AUTOCANNON_INSTANCE_TYPE` - EC2 instance type for autocannon (default: `t3.micro`)
+
+**Note**: EKS benchmark uses pure AWS CLI (no eksctl or CloudFormation). It creates:
+- VPC with subnets, internet gateway, and route tables
+- IAM roles for cluster and nodes
+- EKS cluster and managed node group
+- Custom kubectl context (cluster name)
 
 ### pm2-vs-watt Demo
 - `SCRIPT_NAME` - Which npm script to run (values: `pm2r-start`, `watt-start`, `cluster-start`)
