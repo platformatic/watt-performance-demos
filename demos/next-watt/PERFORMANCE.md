@@ -2,6 +2,12 @@
 
 These are split into different sized resources.
 
+* [Kubernetes](#kubernetes)
+  * Pods with [2-3 CPU](#2-3-cpu-pods)
+  * Pods with [1-2 CPU](#1-2-cpu-pods)
+* [docker-compose](#docker-compose)
+  * [2 CPU](#2-cpu)
+
 ## Kubernetes
 
 ### 2-3 CPU Pods
@@ -55,7 +61,7 @@ Req/Bytes counts sampled once per second.
 123 errors (0 timeouts)
 ```
 
-### 1-2 CPU
+### 1-2 CPU Pods
 
 Node runner:
 
