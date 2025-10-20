@@ -9,11 +9,11 @@ if [ -z "$TARGET_URL" ]; then
 fi
 
 echo "== Next.js - Node =="
-autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30000"
+autocannon --debug --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30000"
 
 echo "== Next.js - PM2 =="
-autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30001"
+autocannon --debug --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30001"
 
 echo "== Next.js - watt-extra =="
-autocannon --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30002"
+autocannon --debug --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30002"
 
