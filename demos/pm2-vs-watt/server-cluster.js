@@ -1,6 +1,7 @@
 import cluster from 'cluster';
 import { cpus } from 'os';
 import { createServer } from 'http';
+import { response } from './response.js'
 
 const numWorkers = process.env.WORKERS;
 
@@ -20,8 +21,8 @@ if (cluster.isPrimary) {
 } else {
   // Workers share the TCP connection
   const server = createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Hello World\n');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(response()));
   });
 
   const host = process.env.HOSTNAME || '127.0.0.1'
