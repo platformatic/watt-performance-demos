@@ -13,10 +13,23 @@ services:
           cpus: 2
           memory: 4gb
 
+  pm2:
+    image: platformatic/next-watt:latest
+    ports:
+      - "30001:3000"
+    environment:
+      - SCRIPT_NAME=start:pm2r
+      - WORKERS=2
+    deploy:
+      resources:
+        reservations:
+          cpus: 2
+          memory: 4gb
+
   watt:
     image: platformatic/next-watt:latest
     ports:
-      - "30042:3000"
+      - "30002:3000"
     environment:
       - SCRIPT_NAME=start:watt
       - WORKERS=2
