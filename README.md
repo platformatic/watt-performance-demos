@@ -17,7 +17,7 @@ How it works:
 ## Cloud Providers
 
 Demos can be run on a number of supported cloud providers instructions. Here are
-instructions:
+instructions for:
 
 * [AWS EC2](./aws-ec2/README.md)
 * [AWS EKS](./aws-eks/README.md)

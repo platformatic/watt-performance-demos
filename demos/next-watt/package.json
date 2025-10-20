@@ -6,7 +6,7 @@
     "start": "next start",
     "start:node": "next start",
     "start:watt": "watt-extra start",
-    "start:pm2r": "pm2-runtime start pm2.js"
+    "start:pm2r": "pm2 --no-daemon start ecosystem.config.js"
   },
   "dependencies": {
     "@platformatic/next": "^3.13.0",

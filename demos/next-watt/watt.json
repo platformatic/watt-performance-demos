@@ -8,7 +8,7 @@
       "enabled": false
     },
     "server": {
-      "hostname": "{PLT_SERVER_HOSTNAME}",
+      "hostname": "{HOSTNAME}",
       "port": "{PORT}"
     },
     "managementApi": "{PLT_MANAGEMENT_API}",
