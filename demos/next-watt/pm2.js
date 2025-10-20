@@ -1,0 +1,9 @@
+module.export = {
+  "apps" : [{
+    name: "nextjs-app",
+    script: "node_modules/next/dist/bin/next",
+    args: "start",
+    exec_mode: "cluster",
+    instances: process.env.WORKERS
+  }]
+}
