@@ -1,298 +1,155 @@
-# pm2-vs-watt
+# HTTP Server
 
-## Scale=1
+We built Watt to be the best place to run any Node.js service (including Next) in any container.
 
-Key parameters:
-1. metrics are disabled everywhere
-2. 1 process/thread 
-3. no logs
+To see how Watt can help improve the performance of your service, use this repo
+to run your app using multiple workers with Watt.
 
-### Node.js Core
+> [!Tip]
+> Try giving your pods some more CPUs to work with and see what that does.
+> You can find some example pod sizes and benchmarks from previous runs we've done on EKS here.
 
-```
-$ npm run bench
+This demo compares running an HTTP Server in `watt`, `pm2`, and `node:cluster`.
 
-> pm2-vs-watt@1.0.0 bench
-> autocannon -c 100 -d 40 -W [ -c 100 -d 10 ] http://localhost:3000
+## Usage
 
-Running 10s warmup @ http://localhost:3000
-100 connections
+The _docker-compose.yml_ and _kube.yaml_ files are adjustable and passed into
+our benchmarking scripts. Try changing the resources and `WORKERS` in these
+files before running them.
 
-Running 40s test @ http://localhost:3000
-100 connections
+Typically, `WORKERS` should match the number of CPU being used. In Kubernetes,
+it can be pushed up to the limit. So, if the request is 2CPU with a limit of
+3CPU then `WORKERS` can be set to `3`.
 
+### Cloud benchmarking
 
-┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐
-│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │
-├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤
-│ Latency │ 1 ms │ 2 ms │ 3 ms  │ 4 ms │ 2.02 ms │ 0.38 ms │ 21 ms │
-└─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘
-┌───────────┬─────────┬─────────┬────────┬────────┬──────────┬────────┬─────────┐
-│ Stat      │ 1%      │ 2.5%    │ 50%    │ 97.5%  │ Avg      │ Stdev  │ Min     │
-├───────────┼─────────┼─────────┼────────┼────────┼──────────┼────────┼─────────┤
-│ Req/Sec   │ 38,751  │ 38,751  │ 40,799 │ 41,311 │ 40,654.4 │ 581.22 │ 38,733  │
-├───────────┼─────────┼─────────┼────────┼────────┼──────────┼────────┼─────────┤
-│ Bytes/Sec │ 6.93 MB │ 6.93 MB │ 7.3 MB │ 7.4 MB │ 7.28 MB  │ 104 kB │ 6.93 MB │
-└───────────┴─────────┴─────────┴────────┴────────┴──────────┴────────┴─────────┘
+The Platformatic team has created guides for using various cloud providers with
+our benchmarking script. These will launch a demo into the cloud and then remove
+all of the resources when completed or cancelled.
 
-Req/Bytes counts sampled once per second.
-# of samples: 40
+Benchmarking scripts available:
 
-1626k requests in 40.02s, 291 MB read
-```
+* [AWS EC2](../../aws-ec2/README.md)
+* [AWS EKS](../../aws-eks/README.md)
 
-### PM2
+This demo is called `pm2-vs-watt`.
 
+### Manual setup - Kubernetes
 
-```
-$ npm run bench
+If you have a Kubernetes cluster available for testing, the _kube.yaml_ file can
+be applied.
 
-> pm2-vs-watt@1.0.0 bench
-> autocannon -c 100 -d 40 -W [ -c 100 -d 10 ] http://localhost:3000
-
-Running 10s warmup @ http://localhost:3000
-100 connections
-
-Running 40s test @ http://localhost:3000
-100 connections
-
-
-┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐
-│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │
-├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤
-│ Latency │ 1 ms │ 2 ms │ 3 ms  │ 3 ms │ 2.02 ms │ 0.32 ms │ 13 ms │
-└─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘
-┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬────────┬─────────┐
-│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev  │ Min     │
-├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼────────┼─────────┤
-│ Req/Sec   │ 38,783  │ 38,783  │ 40,095  │ 40,447  │ 40,036  │ 304.48 │ 38,779  │
-├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼────────┼─────────┤
-│ Bytes/Sec │ 6.94 MB │ 6.94 MB │ 7.18 MB │ 7.24 MB │ 7.17 MB │ 55 kB  │ 6.94 MB │
-└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴────────┴─────────┘
-
-Req/Bytes counts sampled once per second.
-# of samples: 40
-
-1602k requests in 40.01s, 287 MB read
+```sh
+kubectl apply -f kube.yaml
 ```
 
-### Watt
+This will deploy `Service`s of a type of `NodePort` for access. All of the
+deployed `Service`s can be found with:
 
-```
-$ npm run bench
-
-> pm2-vs-watt@1.0.0 bench
-> autocannon -c 100 -d 40 -W [ -c 100 -d 10 ] http://localhost:3000
-
-Running 10s warmup @ http://localhost:3000
-100 connections
-
-Running 40s test @ http://localhost:3000
-100 connections
-
-
-┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐
-│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │
-├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤
-│ Latency │ 1 ms │ 2 ms │ 3 ms  │ 4 ms │ 2.02 ms │ 0.36 ms │ 20 ms │
-└─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘
-┌───────────┬────────┬────────┬─────────┬─────────┬──────────┬─────────┬────────┐
-│ Stat      │ 1%     │ 2.5%   │ 50%     │ 97.5%   │ Avg      │ Stdev   │ Min    │
-├───────────┼────────┼────────┼─────────┼─────────┼──────────┼─────────┼────────┤
-│ Req/Sec   │ 39,103 │ 39,103 │ 40,543  │ 40,927  │ 40,291.2 │ 530.8   │ 39,096 │
-├───────────┼────────┼────────┼─────────┼─────────┼──────────┼─────────┼────────┤
-│ Bytes/Sec │ 7 MB   │ 7 MB   │ 7.26 MB │ 7.32 MB │ 7.21 MB  │ 95.2 kB │ 7 MB   │
-└───────────┴────────┴────────┴─────────┴─────────┴──────────┴─────────┴────────┘
-
-Req/Bytes counts sampled once per second.
-# of samples: 40
-
-1612k requests in 40.02s, 288 MB read
+```sh
+kubectl get service \
+  -o jsonpath='{.items[?(@.metadata.annotations.benchmark.platformatic.dev/expose=="true")].metadata.name}'
 ```
 
-## Scale=2
+Once the demo is deployed, execute _autocannon.sh_ against the environment:
 
-### Node Cluster
-
-```
-$ npm run bench-scale
-
-> pm2-vs-watt@1.0.0 bench-scale
-> autocannon -c 100 -d 40 -w 2 -W [ -c 100 -d 10 ] http://localhost:3000
-
-Running 10s warmup @ http://localhost:3000
-100 connections
-2 workers
-
-Running 40s test @ http://localhost:3000
-100 connections
-2 workers
-
-┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐
-│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │
-├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤
-│ Latency │ 1 ms │ 1 ms │ 3 ms  │ 3 ms │ 1.23 ms │ 0.58 ms │ 29 ms │
-└─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘
-┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬──────────┬─────────┐
-│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev    │ Min     │
-├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┤
-│ Req/Sec   │ 46,847  │ 46,847  │ 56,863  │ 58,847  │ 56,296  │ 2,262.63 │ 46,833  │
-├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┤
-│ Bytes/Sec │ 8.38 MB │ 8.38 MB │ 10.2 MB │ 10.5 MB │ 10.1 MB │ 405 kB   │ 8.38 MB │
-└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴──────────┴─────────┘
-
-Req/Bytes counts sampled once per second.
-# of samples: 80
-
-2252k requests in 40.02s, 403 MB read
+```sh
+TARGET_URL=http://<ip-or-host> ./autocannon.sh
 ```
 
-### PM2
+All deployment options use fixed port numbers so that _autocannon.sh_ can be
+easily applied against any environment.
 
-```
-$ npm run bench-scale
+### Manual setup - Docker Compose
 
-> pm2-vs-watt@1.0.0 bench-scale
-> autocannon -c 100 -d 40 -w 2 -W [ -c 100 -d 10 ] http://localhost:3000
+This demo can be run locally using `docker compose` but be aware that
+`autocannon` will be in contention for resources with the demo.
 
-Running 10s warmup @ http://localhost:3000
-100 connections
-2 workers
-
-Running 40s test @ http://localhost:3000
-100 connections
-2 workers
-
-|
-┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐
-│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │
-├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤
-│ Latency │ 1 ms │ 1 ms │ 3 ms  │ 3 ms │ 1.34 ms │ 0.67 ms │ 22 ms │
-└─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘
-┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬──────────┬─────────┐
-│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev    │ Min     │
-├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┤
-│ Req/Sec   │ 47,519  │ 47,519  │ 52,671  │ 56,127  │ 52,484  │ 2,232.43 │ 47,518  │
-├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┤
-│ Bytes/Sec │ 8.51 MB │ 8.51 MB │ 9.43 MB │ 10.1 MB │ 9.39 MB │ 399 kB   │ 8.51 MB │
-└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴──────────┴─────────┘
-
-Req/Bytes counts sampled once per second.
-# of samples: 80
-
-2099k requests in 40.02s, 376 MB read
+```sh
+docker compose up
 ```
 
-### resuePort: true with two processes
+Once the demo is deployed, execute _autocannon.sh_ against the environment:
 
-```
-$ npm run bench-scale
-
-> pm2-vs-watt@1.0.0 bench-scale
-> autocannon -c 100 -d 40 -w 2 -W [ -c 100 -d 10 ] http://localhost:3000
-
-Running 10s warmup @ http://localhost:3000
-100 connections
-2 workers
-
-Running 40s test @ http://localhost:3000
-100 connections
-2 workers
-
-|
-┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐
-│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │
-├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤
-│ Latency │ 0 ms │ 1 ms │ 2 ms  │ 2 ms │ 0.95 ms │ 0.54 ms │ 20 ms │
-└─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘
-┌───────────┬─────────┬─────────┬─────────┬─────────┬───────────┬──────────┬─────────┐
-│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg       │ Stdev    │ Min     │
-├───────────┼─────────┼─────────┼─────────┼─────────┼───────────┼──────────┼─────────┤
-│ Req/Sec   │ 63,551  │ 63,551  │ 75,455  │ 78,847  │ 75,275.61 │ 2,688.75 │ 63,522  │
-├───────────┼─────────┼─────────┼─────────┼─────────┼───────────┼──────────┼─────────┤
-│ Bytes/Sec │ 11.4 MB │ 11.4 MB │ 13.5 MB │ 14.1 MB │ 13.5 MB   │ 483 kB   │ 11.4 MB │
-└───────────┴─────────┴─────────┴─────────┴─────────┴───────────┴──────────┴─────────┘
-
-Req/Bytes counts sampled once per second.
-# of samples: 80
-
-3011k requests in 40.02s, 539 MB read
+```sh
+TARGET_URL=http://<ip-or-host> ./autocannon.sh
 ```
 
+All deployment options use fixed port numbers so that _autocannon.sh_ can be
+easily applied against any environment.
 
-### Watt
+## Performance results
 
-```
-$ npm run bench-scale
+The complete results of our tests runs are available in [PERFORMANCE.md](./PERFORMANCE.md).
 
-> pm2-vs-watt@1.0.0 bench-scale
-> autocannon -c 100 -d 40 -w 2 -W [ -c 100 -d 10 ] http://localhost:3000
+This is a comparison in Kubernetes with each deployment running 2-3 CPUs and
+each having a HPA with min 2 and max 10, averaging 50% CPU utilization.
 
-Running 10s warmup @ http://localhost:3000
+Node.js Cluster:
+```sh
+Running 40s warmup @ http://10.0.1.192:30002
+ 100 -d 10 connections
+Running 40s test @ http://10.0.1.192:30002
 100 connections
-2 workers
-
-Running 40s test @ http://localhost:3000
-100 connections
-2 workers
-
-|
-┌─────────┬──────┬──────┬───────┬──────┬──────┬─────────┬───────┐
-│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg  │ Stdev   │ Max   │
-├─────────┼──────┼──────┼───────┼──────┼──────┼─────────┼───────┤
-│ Latency │ 0 ms │ 1 ms │ 2 ms  │ 2 ms │ 1 ms │ 0.48 ms │ 23 ms │
-└─────────┴──────┴──────┴───────┴──────┴──────┴─────────┴───────┘
+┌─────────┬──────┬──────┬───────┬──────┬─────────┬────────┬───────┐
+│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev  │ Max   │
+├─────────┼──────┼──────┼───────┼──────┼─────────┼────────┼───────┤
+│ Latency │ 2 ms │ 3 ms │ 6 ms  │ 7 ms │ 3.26 ms │ 1.6 ms │ 79 ms │
+└─────────┴──────┴──────┴───────┴──────┴─────────┴────────┴───────┘
 ┌───────────┬─────────┬─────────┬─────────┬─────────┬──────────┬──────────┬─────────┐
 │ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg      │ Stdev    │ Min     │
 ├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼──────────┼─────────┤
-│ Req/Sec   │ 63,455  │ 63,455  │ 75,839  │ 78,527  │ 75,082.8 │ 3,178.07 │ 63,433  │
+│ Req/Sec   │ 19,519  │ 19,519  │ 26,015  │ 30,783  │ 26,813.2 │ 2,844.52 │ 19,513  │
 ├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼──────────┼─────────┤
-│ Bytes/Sec │ 11.4 MB │ 11.4 MB │ 13.6 MB │ 14.1 MB │ 13.4 MB  │ 568 kB   │ 11.4 MB │
+│ Bytes/Sec │ 3.49 MB │ 3.49 MB │ 4.66 MB │ 5.51 MB │ 4.8 MB   │ 509 kB   │ 3.49 MB │
 └───────────┴─────────┴─────────┴─────────┴─────────┴──────────┴──────────┴─────────┘
-
 Req/Bytes counts sampled once per second.
-# of samples: 80
-
-3003k requests in 40.02s, 538 MB read
+# of samples: 40
+1073k requests in 40.08s, 192 MB read
 ```
 
-### PM2
-
-```
-$ npm run bench-scale
-
-> pm2-vs-watt@1.0.0 bench-scale
-> autocannon -c 100 -d 40 -w 2 -W [ -c 100 -d 10 ] http://localhost:3000
-
-Running 10s warmup @ http://localhost:3000
+pm2-runtime with 2 workers:
+```sh
+Running 40s warmup @ http://10.0.1.192:30000
+ 100 -d 10 connections
+Running 40s test @ http://10.0.1.192:30000
 100 connections
-2 workers
-
-Running 40s test @ http://localhost:3000
-100 connections
-2 workers
-
-|
 ┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐
 │ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │
 ├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤
-│ Latency │ 1 ms │ 1 ms │ 3 ms  │ 3 ms │ 1.34 ms │ 0.67 ms │ 22 ms │
+│ Latency │ 2 ms │ 3 ms │ 7 ms  │ 8 ms │ 3.46 ms │ 1.68 ms │ 70 ms │
 └─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘
-┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬──────────┬─────────┐
-│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev    │ Min     │
-├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┤
-│ Req/Sec   │ 47,519  │ 47,519  │ 52,671  │ 56,127  │ 52,484  │ 2,232.43 │ 47,518  │
-├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┤
-│ Bytes/Sec │ 8.51 MB │ 8.51 MB │ 9.43 MB │ 10.1 MB │ 9.39 MB │ 399 kB   │ 8.51 MB │
-└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴──────────┴─────────┘
-
+┌───────────┬─────────┬─────────┬─────────┬────────┬──────────┬──────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%  │ Avg      │ Stdev    │ Min     │
+├───────────┼─────────┼─────────┼─────────┼────────┼──────────┼──────────┼─────────┤
+│ Req/Sec   │ 15,439  │ 15,439  │ 26,143  │ 26,799 │ 25,269.7 │ 2,502.62 │ 15,438  │
+├───────────┼─────────┼─────────┼─────────┼────────┼──────────┼──────────┼─────────┤
+│ Bytes/Sec │ 2.76 MB │ 2.76 MB │ 4.68 MB │ 4.8 MB │ 4.52 MB  │ 448 kB   │ 2.76 MB │
+└───────────┴─────────┴─────────┴─────────┴────────┴──────────┴──────────┴─────────┘
 Req/Bytes counts sampled once per second.
-# of samples: 80
-
-2099k requests in 40.02s, 376 MB read
+# of samples: 40
+1011k requests in 40.08s, 181 MB read
 ```
 
-## Licenses
-
-PM2 is licensed as AGPL, therefore you are forced to get a license from Keymetrics to use it, as some of its parts are loaded into your applications.
-Watt is licensed as Apache 2.0.
+watt-extra with 2 workers:
+```sh
+Running 40s warmup @ http://10.0.1.192:30001
+ 100 -d 10 connections
+Running 40s test @ http://10.0.1.192:30001
+100 connections
+┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐
+│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │
+├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤
+│ Latency │ 2 ms │ 2 ms │ 5 ms  │ 5 ms │ 2.93 ms │ 1.36 ms │ 87 ms │
+└─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬──────────┬──────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg      │ Stdev    │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼──────────┼─────────┤
+│ Req/Sec   │ 21,423  │ 21,423  │ 30,463  │ 31,087  │ 30,234.8 │ 1,469.58 │ 21,413  │
+├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼──────────┼─────────┤
+│ Bytes/Sec │ 3.83 MB │ 3.83 MB │ 5.45 MB │ 5.57 MB │ 5.41 MB  │ 263 kB   │ 3.83 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴──────────┴──────────┴─────────┘
+Req/Bytes counts sampled once per second.
+# of samples: 40
+1209k requests in 40.06s, 216 MB read
+```
