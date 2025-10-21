@@ -21,15 +21,6 @@ Typically, `WORKERS` should match the number of CPU being used. In Kubernetes,
 it can be pushed up to the limit. So, if the request is 2CPU with a limit of
 3CPU then `WORKERS` can be set to `3`.
 
-Once the demo is deployed, execute _autocannon.sh_ against the environment:
-
-```sh
-TARGET_URL=http://<ip-or-host> ./autocannon.sh
-```
-
-All deployment options use fixed port numbers so that _autocannon.sh_ can be
-easily applied against any environment.
-
 ### Cloud benchmarking
 
 The Platformatic team has created guides for using various cloud providers with
@@ -60,6 +51,15 @@ kubectl get service \
   -o jsonpath='{.items[?(@.metadata.annotations.benchmark.platformatic.dev/expose=="true")].metadata.name}'
 ```
 
+Once the demo is deployed, execute _autocannon.sh_ against the environment:
+
+```sh
+TARGET_URL=http://<ip-or-host> ./autocannon.sh
+```
+
+All deployment options use fixed port numbers so that _autocannon.sh_ can be
+easily applied against any environment.
+
 ### Manual setup - Docker Compose
 
 This demo can be run locally using `docker compose` but be aware that
@@ -68,6 +68,15 @@ This demo can be run locally using `docker compose` but be aware that
 ```sh
 docker compose up
 ```
+
+Once the demo is deployed, execute _autocannon.sh_ against the environment:
+
+```sh
+TARGET_URL=http://<ip-or-host> ./autocannon.sh
+```
+
+All deployment options use fixed port numbers so that _autocannon.sh_ can be
+easily applied against any environment.
 
 ## Performance results
 
