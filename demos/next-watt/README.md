@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Next.js with Watt
 
-## Getting Started
+We built Watt to be the best place to run any Node.js service (including Next) in any container.
 
-First, run the development server:
+To see how Watt can help improve the performance of your service, use this repo 
+to run your app using multiple workers with Watt.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> ![Hint]:
+> Try giving your pods some more CPUs to work with and see what that does.
+> You can find some example pod sizes and benchmarks from previous runs we've done on EKS here.
+
+This demo compares running Next.js in `watt`, `pm2`, and `node`.
+
+## Usage
+
+The _docker-compose.yml_ and _kube.yaml_ files are adjustable and passed into
+our benchmarking scripts. Try changing the resources and `WORKERS` in these
+files before running them.
+
+Typically, `WORKERS` should match the number of CPU being used. In Kubernetes,
+it can be pushed up to the limit. So, if the request is 2CPU with a limit of
+3CPU then `WORKERS` can be set to `3`.
+
+Once the demo is deployed, execute _autocannon.sh_ against the environment:
+
+```sh
+TARGET_URL=http://<ip-or-host> ./autocannon.sh
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+All deployment options use fixed port numbers so that _autocannon.sh_ can be
+easily applied against any environment.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### Cloud benchmarking
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The Platformatic team has created guides for using various cloud providers with
+our benchmarking script. These will launch a demo into the cloud and then remove
+all of the resources when completed or cancelled.
 
-## Learn More
+Benchmarking scripts available:
 
-To learn more about Next.js, take a look at the following resources:
+* [AWS EC2](../../aws-ec2/README.md)
+* [AWS EKS](../../aws-eks/README.md)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This demo is called `next-watt`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Manual setup - Kubernetes
 
-## Deploy on Vercel
+If you have a Kubernetes cluster available for testing, the _kube.yaml_ file can
+be applied.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```sh
+kubectl apply -f kube.yaml
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This will deploy `Service`s of a type of `NodePort` for access. All of the
+deployed `Service`s can be found with:
+
+```sh
+kubectl get service \
+  -o jsonpath='{.items[?(@.metadata.annotations.benchmark.platformatic.dev/expose=="true")].metadata.name}'
+```
+
+### Manual setup - Docker Compose
+
+This demo can be run locally using `docker compose` but be aware that
+`autocannon` will be in contention for resources with the demo.
+
+```sh
+docker compose up
+```
+
+## Performance results
+
+Performance results from our test runs are available in
+[PERFORMANCE.md](./PERFORMANCE.md).
