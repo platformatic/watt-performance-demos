@@ -5,7 +5,7 @@ We built Watt to be the best place to run any Node.js service (including Next) i
 To see how Watt can help improve the performance of your service, use this repo 
 to run your app using multiple workers with Watt.
 
-> ![Hint]:
+> [!Tip]
 > Try giving your pods some more CPUs to work with and see what that does.
 > You can find some example pod sizes and benchmarks from previous runs we've done on EKS here.
 
