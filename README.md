@@ -7,7 +7,7 @@ Multi-cloud benchmarking framework comparing PM2 vs Watt across different cloud 
 This repository implements a standardized benchmarking architecture designed for easy extension across multiple cloud providers:
 
 - **Common Functions Library** (`lib/common.sh`) - Shared functionality across all locations
-- **Performance Demos** (`performance-demos/`) - Collection of demos
+- **Performance Demos** (`demos/`) - Collection of demos
 - **Cloud Provider Locations** (`aws-ec2/`, `gcp-gce/`, etc.) - Provider-specific orchestration
 
 How it works:
