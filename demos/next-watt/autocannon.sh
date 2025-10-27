@@ -1,19 +1,11 @@
-#!/bin/sh
-
-TARGET_URL="$1"
-
-if [ -z "$TARGET_URL" ]; then
-  echo "Error: target_url is required"
-  echo "Usage: $0 <target_url>"
-  exit 1
-fi
+#!/bin/bash
 
 echo "== Next.js - Node =="
-autocannon --debug --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30000"
+npx autocannon --overallRate 10000 --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30000"
 
 echo "== Next.js - PM2 =="
-autocannon --debug --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30001"
+npx autocannon --overallRate 10000 --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30001"
 
 echo "== Next.js - watt-extra =="
-autocannon --debug --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30002"
+npx autocannon --overallRate 10000 --connections 100 --duration 40 --warmup '[-c 100 -d 10]' "$TARGET_URL:30002"
 

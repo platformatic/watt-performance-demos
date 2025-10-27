@@ -673,26 +673,29 @@ launch_autocannon_instance() {
 
 	log "Using subnet: $subnet_id"
 
+	local autocannon_script
+	autocannon_script=$(cat "$DEMO_SOURCE_DIR/autocannon.sh")
+
 	# Create user data script for autocannon instance
 	IFS='' read -r -d '' ac_user_script <<EOF || true
 #!/bin/bash
 set -x
 
-yum update -y
-yum install -y docker
-systemctl start docker
-systemctl enable docker
+wget https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-arm64.tar.xz
+tar -xf node-v22.21.0-linux-arm64.tar.xz
+mv node-v22.21.0-linux-arm64 /usr/local/node
 
-# Wait for docker to be ready
-sleep 10
-
-# Pull the pre-built autocannon image
-echo 'Pulling autocannon image'
-docker pull $AUTOCANNON_IMAGE
+# Create symbolic links to make node and npm accessible globally
+ln -s /usr/local/node/bin/node /usr/bin/node
+ln -s /usr/local/node/bin/npm /usr/bin/npm
+ln -s /usr/local/node/bin/npx /usr/bin/npx
 
 # Run autocannon benchmark with node IP
+
 echo 'Starting benchmark against node $node_ip'
-docker run -e TARGET_URL=$node_ip -e DEMO_NAME=$DEMO_NAME $AUTOCANNON_IMAGE
+export TARGET_URL=$node_ip
+
+$autocannon_script
 
 echo 'Benchmark completed - instance will terminate'
 EOF

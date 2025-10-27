@@ -247,7 +247,6 @@ docker compose version
 # Can't upload files ahead of time without building an AMI so instead we write
 # the contents of the source docker-compose file
 echo "$demo_docker_compose" > $compose_location
-cat $compose_location
 
 # Run demo service - $DEMO_NAME type
 $demo_cmd
@@ -271,25 +270,28 @@ EOF
 
 	log "Creating autocannon instance with target $DEMO_IP"
 
+	local autocannon_script
+	autocannon_script=$(cat "$DEMO_SOURCE_DIR/autocannon.sh")
+
 	IFS='' read -r -d '' ac_user_script <<EOF || true
 #!/bin/bash
 set -x
 
-yum update -y
-yum install -y docker
-systemctl start docker
-systemctl enable docker
+wget https://nodejs.org/dist/v22.21.0/node-v22.21.0-linux-arm64.tar.xz
+tar -xf node-v22.21.0-linux-arm64.tar.xz
+mv node-v22.21.0-linux-arm64 /usr/local/node
 
-# Wait for docker to be ready
-sleep 10
+# Create symbolic links to make node and npm accessible globally
+ln -s /usr/local/node/bin/node /usr/bin/node
+ln -s /usr/local/node/bin/npm /usr/bin/npm
+ln -s /usr/local/node/bin/npx /usr/bin/npx
 
-# Pull the pre-built autocannon image from GitHub Container Registry
-echo 'Pulling autocannon image'
-docker pull $CANNON_IMAGE
+# Run autocannon benchmark with node IP
+echo 'Starting benchmark against node $DEMO_IP'
 
-# Run autocannon benchmark with demo URL and redirect output to log file
-echo 'Starting benchmark against http://$DEMO_IP'
-docker run -e TARGET_URL=http://$DEMO_IP -e DEMO_NAME=$DEMO_NAME $CANNON_IMAGE
+export TARGET_URL=$DEMO_IP
+
+$autocannon_script
 
 echo 'Benchmark completed - instance will terminate'
 EOF
