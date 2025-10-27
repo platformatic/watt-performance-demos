@@ -288,7 +288,7 @@ spec:
 ## Running the Benchmarks Yourself
 
 The complete benchmark framework is open source and available at:
-**github.com/platformatic/watt-performance-demos**
+**[github.com/platformatic/watt-performance-demos](https://github.com/platformatic/watt-performance-demos)**
 
 ### Quick Start
 
